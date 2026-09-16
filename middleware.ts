@@ -1,39 +1,11 @@
-import { NextResponse } from "next/server";
 import NextAuth from "next-auth";
 import authConfig from "./auth.config";
 
 const { auth } = NextAuth(authConfig);
 
-export const middleware = auth((req) => {
-  const session = req.auth;
-  const { pathname } = req.nextUrl;
-
-  // Paths that do not require authentication
-  if (
-    pathname === "/login" ||
-    pathname === "/unauthorized" ||
-    pathname.startsWith("/api/auth")
-  ) {
-    return NextResponse.next();
-  }
-
-  // If no session, redirect to login
-  if (!session) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
-
-  // Admin emails whitelist check
-  const adminEmails = ["alexli9118@gmail.com", "cc731228@gmail.com"];
-  if (
-    !session.user ||
-    !session.user.email ||
-    !adminEmails.includes(session.user.email)
-  ) {
-    return NextResponse.redirect(new URL("/unauthorized", req.url));
-  }
-
-  return NextResponse.next();
-});
+export function middleware(request: any) {
+  return auth(request);
+}
 
 export const config = {
   matcher: [
