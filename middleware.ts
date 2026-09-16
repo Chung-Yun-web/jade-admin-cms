@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import NextAuth from "next-auth";
 import authConfig from "./auth.config";
 
 const { auth } = NextAuth(authConfig);
 
-export async function middleware(request: NextRequest) {
-  const session = await auth();
-  const { pathname } = request.nextUrl;
+export const middleware = auth((req) => {
+  const session = req.auth;
+  const { pathname } = req.nextUrl;
 
   // Paths that do not require authentication
   if (
@@ -20,7 +19,7 @@ export async function middleware(request: NextRequest) {
 
   // If no session, redirect to login
   if (!session) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
   // Admin emails whitelist check
@@ -30,11 +29,11 @@ export async function middleware(request: NextRequest) {
     !session.user.email ||
     !adminEmails.includes(session.user.email)
   ) {
-    return NextResponse.redirect(new URL("/unauthorized", request.url));
+    return NextResponse.redirect(new URL("/unauthorized", req.url));
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [
