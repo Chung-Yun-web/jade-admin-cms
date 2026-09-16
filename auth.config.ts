@@ -19,7 +19,6 @@
   checkAndSanitize("NEXTAUTH_URL");
 })();
 
-import GoogleProvider from "next-auth/providers/google";
 import type { NextAuthConfig } from "next-auth";
 
 export default {
@@ -31,17 +30,7 @@ export default {
   pages: {
     signIn: "/login",
   },
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      authorization: {
-        params: {
-          prompt: "select_account",
-        },
-      },
-    }),
-  ],
+  providers: [], // Keep empty for Edge Runtime compatibility inside middleware
   callbacks: {
     authorized({ request, auth }) {
       const { pathname } = request.nextUrl;
