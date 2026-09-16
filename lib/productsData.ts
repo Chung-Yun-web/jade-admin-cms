@@ -1,0 +1,484 @@
+import { ProductSeries } from "./types";
+
+export const productsData: ProductSeries[] = [
+  {
+    id: "natural",
+    name: "自然個性系列",
+    englishName: "Natural Series",
+    description: "保留玉石最初的隨形美學與原創肌理，將大自然的鬼斧神工融入日常配戴。",
+    seriesStyle: {
+      header: {
+        title: "心境之形 Inner States Collection",
+        description: "不以顏色定義，而以狀態命名；每一種形，都是一種正在發生的心情"
+      },
+      story: {
+        image: "/images/collections/nature-personality-style.jpg",
+        subtitle: "《剛剛好》 Just Enough",
+        paragraphs: [
+          "不是最好，也不是最壞，",
+          "而是在所有拉扯之間，",
+          "剛剛好停在一個不需要解釋的狀態。",
+          "圓剛的形，沒有稜角，",
+          "像是包含了留住所有相遇之滾的樣子。",
+          "不多，也不少。"
+        ],
+        emphasis: "這樣，剛剛好。"
+      },
+      features: [
+        {
+          title: "天然紋飾",
+          content: "精選大地自然演化的色彩"
+        },
+        {
+          title: "金工包鑲",
+          content: "溫柔的包覆，而不限制"
+        },
+        {
+          title: "順型取料",
+          content: "讓過客成為主角"
+        }
+      ]
+    },
+    moodNotes: {
+      header: {
+        title: "自然個性系列",
+        subtitle: "NATURAL SERIES",
+        mainTagline: "「與石同息，每一件作品都是靈魂的獨特印記。」"
+      },
+      story: {
+        image: "/images/collections/nature-personality-mood.jpg",
+        paragraphs: "在喧囂之中尋找一絲靜謐。大自然隨形琢磨的玉石，不爭不搶，以最真誠的姿態佇立。正如我們的心境，在一呼一吸間，感受生命緩緩流消的節奏。"
+      },
+      features: [
+        { "title": "極致琢磨", "description": "" },
+        { "title": "古法鎏金", "description": "" },
+        { "title": "當代設計", "description": "" }
+      ]
+    },
+    outfitPhilosophy: {
+      header: {
+        title: "自然個性系列",
+        subtitle: "NATURAL SERIES",
+        mainTagline: "「與石同息，每一件作品都是靈魂的獨特印記。」"
+      },
+      story: {
+        image: "/images/collections/nature-personality-outfit.jpg",
+        paragraphs: "適合搭配棉麻、絲綢等天然材質服飾。不喧賓奪主的溫潤色澤，能自然地融入日常穿搭中。無論是單獨配戴還是多層次疊搭，皆能展現隨意而有力量的個人風格。"
+      },
+      features: [
+        { "title": "極致琢磨", "description": "" },
+        { "title": "古法鎏金", "description": "" },
+        { "title": "當代設計", "description": "" }
+      ]
+    },
+    products: [
+      {
+        id: "n1",
+        name: "碧羽驚鴻 · 和闐青玉項鍊",
+        description: "以飛羽之姿詮釋自然生機，青玉與古法鏨金交相輝映，靈動曼妙。",
+        image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=800",
+          "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 32000,
+        variants: [
+          {
+            name: "和闐青玉 + 18K古法鏨金",
+            price: 32000,
+            image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=800"
+          },
+          {
+            name: "和闐青玉 + 14K白金",
+            price: 29800,
+            image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：A級天然和闐青玉、18K古法鏨金 / 14K白金。鏈長：45cm（含5cm調節鏈）。",
+          ordering: "本產品為半手工訂製，下單後需 10-14 個工作天進行精密金工製作與鑲嵌。",
+          returns: "非人為損壞保固一年。因玉石天然紋理各有不同，不接受因色差或自然紋理原因之退換貨。"
+        }
+      },
+      {
+        id: "n2",
+        name: "林間微光 · 翡翠隨形手鐲",
+        description: "保留原石天然隨形之美，原創手感打磨，完美貼合腕部線條。",
+        image: "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 54000,
+        variants: [
+          {
+            name: "冰種綠翡隨形",
+            price: 54000,
+            image: "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=800"
+          },
+          {
+            name: "晴水藍綠隨形",
+            price: 49000,
+            image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：老坑冰種隨形翡翠（A貨）。手鐲內圈口徑：52mm - 60mm（可客製化）。",
+          ordering: "由於隨形手鐲需依據原石形狀手工打磨，每一只皆為孤品，下單後專人聯繫確認圈口與石樣。",
+          returns: "客製化尺寸商品恕不接受退換貨。天然翡翠終身保證 A 貨，支持複檢，假一賠十。"
+        }
+      },
+      {
+        id: "n3",
+        name: "山影重重 · 墨玉磨砂對戒",
+        description: "黑墨玉磨砂面宛如遠山剪影，純手工鑿刻山脈線條，雋永深邃。",
+        image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 28000,
+        variants: [
+          {
+            name: "男款 (寬 5mm) + 墨玉",
+            price: 15000,
+            image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=800"
+          },
+          {
+            name: "女款 (寬 3.5mm) + 墨玉",
+            price: 13000,
+            image: "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：特級新疆黑墨玉、925銀鍍黑金 / 18K白金。表面工藝：火山磨砂肌理與手工鑿刻。",
+          ordering: "請於備註欄註明男女款國際圍尺寸。手工鑿刻工作天數為 7-10 天。",
+          returns: "提供一次免費縮放戒圍服務（正負1號之內）。客製化刻字商品不可退換。"
+        }
+      },
+      {
+        id: "n4",
+        name: "朝露初啟 · 羊脂白玉耳環",
+        description: "飽滿水滴造型羊脂白玉，點綴微鑲碎鑽，猶如清晨第一滴甘露。",
+        image: "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 36500,
+        variants: [
+          {
+            name: "羊脂白玉耳環 (針式)",
+            price: 36500,
+            image: "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&q=80&w=800"
+          },
+          {
+            name: "羊脂白玉耳環 (夾式)",
+            price: 36500,
+            image: "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：一級羊脂白玉、18K黃金鑲嵌、天然南非足反碎鑽（共0.12克拉）。",
+          ordering: "耳環現貨充足，下單後 3 個工作天內出貨。若無現貨需訂製約 10 天。",
+          returns: "耳環屬個人衛生用品，拆封後恕不接受退換貨。非人為保固一年。"
+        }
+      }
+    ]
+  },
+  {
+    id: "sculptural",
+    name: "圓融造型系列",
+    englishName: "Sculptural Series",
+    description: "演繹東方哲學中的「圓融」之境，流暢的雕塑線條與玉石完美融合。",
+    products: [
+      {
+        id: "sc1",
+        name: "太極兩儀 · 黑白雙色玉珮",
+        description: "極簡線條勾勒太極神韻，黑墨玉與白玉無縫拼接，盡顯圓融和諧之境。",
+        image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 46000,
+        variants: [
+          {
+            name: "特級黑墨玉 + 羊脂白玉",
+            price: 46000,
+            image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：極品和闐墨玉與羊脂白玉雙色無縫榫接。尺寸：直徑 35mm，厚度 6mm。",
+          ordering: "採用極高難度的榫接工藝，手工對縫精密度達 0.05mm。限量手作，下訂後需 20 個工作天。",
+          returns: "附帶國家級珠寶鑑定雙證書。享有終身免費清洗與超音波保養服務。"
+        }
+      },
+      {
+        id: "sc2",
+        name: "莫比烏斯 · 18K 金鑲玉戒",
+        description: "莫比烏斯環的無限延伸概念，流暢金工與細緻碧玉完美交織。",
+        image: "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 29800,
+        variants: [
+          {
+            name: "18K 黃金 + 俄羅斯碧玉",
+            price: 29800,
+            image: "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&q=80&w=800"
+          },
+          {
+            name: "18K 玫瑰金 + 俄羅斯碧玉",
+            price: 29800,
+            image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：18K金（可選黃金/玫瑰金）、精選老坑蘋果綠碧玉。戒寬：約 3.2mm。",
+          ordering: "請在下單時確認國際圍。工期約 10-12 個工作天。",
+          returns: "享有 7 天鑑賞期（客製化刻字或改圍除外）。"
+        }
+      },
+      {
+        id: "sc3",
+        name: "蒼穹之眼 · 圓形翡翠墜飾",
+        description: "完美正圓翡翠，極簡中空設計，18K金微鑲外框，大氣而內斂。",
+        image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 42500,
+        variants: [
+          {
+            name: "冰玻種淡綠翡翠",
+            price: 42500,
+            image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=800"
+          },
+          {
+            name: "冰玻種晴水藍翡翠",
+            price: 45000,
+            image: "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：冰玻種正圓翡翠平安扣（A貨）、18K白金、天然南非碎鑽。直徑約 18mm。",
+          ordering: "配備 18K 白金肖邦鏈（45cm，含可調節珠）。出貨時間約 5 個工作天。",
+          returns: "終身保證 A 貨，附公信力鑑定證書。非人為損壞保固一年。"
+        }
+      },
+      {
+        id: "sc4",
+        name: "迴流 · 隨形曲線玉手環",
+        description: "流暢的雕塑感線條，精細打磨的溫潤質地，展現力量與柔美的平衡。",
+        image: "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 72000,
+        variants: [
+          {
+            name: "極品和闐白玉 隨形流線",
+            price: 72000,
+            image: "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：特級新疆和闐籽料白玉。手感溫潤，油脂感極佳。口徑：客製化適合手圍。",
+          ordering: "此作品需要琢玉大師耗時一個月依據整塊原石精準雕琢。需預付 50% 訂金，約 30 工作天。",
+          returns: "高端藝術收藏品，售出後由會所提供終身VIP級保養服務，恕不接受退換。"
+        }
+      }
+    ]
+  },
+  {
+    id: "statement",
+    name: "魅力風格系列",
+    englishName: "Statement Series",
+    description: "以大膽前衛的金工藝術與極致色澤，打造獨一無二的視覺張力與當代氣場。",
+    products: [
+      {
+        id: "st1",
+        name: "烈焰重光 · 紅翡鏨金胸針",
+        description: "稀有紅翡翠搭配古法繁複花絲工藝，浴火鳳凰般的張力設計，尊貴非凡。",
+        image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 88000,
+        variants: [
+          {
+            name: "天然紅翡 + 24K純金花絲鏨刻",
+            price: 88000,
+            image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：罕見高飽和天然紅翡翠、24K足金古法花絲工藝、天然紅寶石點綴。",
+          ordering: "頂級大師限量製作。每件均有獨立編號，製作週期為 25 個工作天。",
+          returns: "享有大台北地區專人配送與簽收鑑賞服務。此高階藝術品售出不退。"
+        }
+      },
+      {
+        id: "st2",
+        name: "夜幕星辰 · 墨翠鑲鑽手鏈",
+        description: "深邃墨翠在強光下透出迷人翠綠，微鑲群鑽如夜空繁星般閃耀。",
+        image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 62000,
+        variants: [
+          {
+            name: "18K白金 + 頂級老坑墨翠",
+            price: 62000,
+            image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：老坑墨翠蛋面（強光下呈現正綠色）、18K白金、南非群鑽（共0.55克拉）。",
+          ordering: "手鏈長度為 16cm + 3cm 延長鏈。下訂後約 14 個工作天出貨。",
+          returns: "附精密鑑定書。非人為保固一年，提供終身免費鑽石檢查與微調加固。"
+        }
+      },
+      {
+        id: "st3",
+        name: "傲骨凌霜 · 滿綠墨翠指環",
+        description: "加寬版硬朗指環設計，老坑墨翠極致色澤，氣場全開的時尚單品。",
+        image: "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 48000,
+        variants: [
+          {
+            name: "老坑滿綠墨翠 (寬版 8mm)",
+            price: 48000,
+            image: "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：整料原石掏空研磨老坑墨翠。厚度：2.5mm，寬度：8mm。",
+          ordering: "整料墨翠原石直接車製，口徑選擇有限，請先預約會所試戴或聯繫客服確認指圍。",
+          returns: "因墨翠指環為整料易碎材質，售出拆封後不接受因尺寸不合之退換，請務必精確量測。"
+        }
+      },
+      {
+        id: "st4",
+        name: "破曉之冠 · 翡翠皇冠耳飾",
+        description: "古典宮廷風皇冠底座，托起四顆老坑冰種綠蛋面，璀璨耀眼。",
+        image: "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 39000,
+        variants: [
+          {
+            name: "18K 黃金 + 冰種綠蛋面",
+            price: 39000,
+            image: "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：18K金皇冠底座、老坑冰種陽綠蛋面（共4顆）、微鑲鑽石。",
+          ordering: "每對耳針皆經精密平衡測試，配戴舒適無負擔。製作期約 10-12 天。",
+          returns: "附帶大師手工保養證書。耳飾拆封後因個人衛生考量不予退換。"
+        }
+      }
+    ]
+  },
+  {
+    id: "stone",
+    name: "原石賞物系列",
+    englishName: "Stone Series",
+    description: "探索璞玉的原始風貌，金工點綴、意境雕琢，為藏家提供極具靈性的掌上臻品。",
+    products: [
+      {
+        id: "sto1",
+        name: "大地呼吸 · 翡翠原石擺件",
+        description: "保留一側原始皮殼，另一側精緻拋光，展示玉石從粗獷到溫潤的蛻變。",
+        image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 98000,
+        variants: [
+          {
+            name: "老坑冰黃翡原石",
+            price: 98000,
+            image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：天然緬甸翡翠原石擺件（帶黃霧砂皮）。尺寸：高約 8.5cm（含手工紫檀木底座）。",
+          ordering: "原石珍品僅此一件。隨貨附大師手繪工藝說明手稿與防偽編號證書。",
+          returns: "高單價藏品，享有黑貓保險宅急便或會所面交。售出非贗品不退款。"
+        }
+      },
+      {
+        id: "sto2",
+        name: "歲月之痕 · 帶皮籽料把玩件",
+        description: "嚴選和闐玉紅沁皮籽料，天然毛孔清晰，手感油潤，宜賞宜玩。",
+        image: "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 68000,
+        variants: [
+          {
+            name: "紅沁皮和闐玉籽料",
+            price: 68000,
+            image: "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：100% 新疆和田玉籽料（帶天然紅沁灑金皮，無染色，毛孔分佈自然）。重量：約 45g。",
+          ordering: "配備手工編織流蘇繩與白玉頂珠。下訂後 3 日內出貨。",
+          returns: "支持任何國家權威機構複檢，如非原皮原籽全額退款。享 7 天鑑賞期。"
+        }
+      },
+      {
+        id: "sto3",
+        name: "凝脂玉山 · 羊脂玉山子擺件",
+        description: "微型山水意境雕刻，隨形就勢，將中式山水融入掌心之間。",
+        image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 125000,
+        variants: [
+          {
+            name: "羊脂級白玉獨山子",
+            price: 125000,
+            image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：一級羊脂白玉、手工黃金樟雕花底座。尺寸：寬 6.5cm，高 5cm。",
+          ordering: "孤品典藏，下訂後由會所珠寶顧問專人配送或預約來店取貨。",
+          returns: "頂級藝術藏品。售出後享終身免費複檢、專業清洗與品鑑沙龍邀請資格。"
+        }
+      },
+      {
+        id: "sto4",
+        name: "幽谷蘭香 · 冰種原石香氛座",
+        description: "冰種原石與天然香氛融合，既是視覺的頂級享受，亦是心靈的安頓。",
+        image: "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&q=80&w=800",
+        detailImages: [
+          "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&q=80&w=800"
+        ],
+        basePrice: 35000,
+        variants: [
+          {
+            name: "冰種隨形翡翠原石 + 沉香香膏",
+            price: 35000,
+            image: "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&q=80&w=800"
+          }
+        ],
+        policy: {
+          specifications: "材質：冰種原創手工凹槽翡翠原石、底座配有黃銅金工件。香氛：隨附天然高階沉香精油 5ml。",
+          ordering: "現貨約 3 個工作天出貨。可以加購客製化黃銅雕刻名字服務（需加 2 個工作天）。",
+          returns: "香精耗材拆封後不可退。原石香座主體保固一年。"
+        }
+      }
+    ]
+  }
+];
