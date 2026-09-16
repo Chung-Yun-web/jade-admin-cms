@@ -1,3 +1,24 @@
+// Safeguard for NextAuth environment variables during build or misconfiguration
+(() => {
+  const checkAndSanitize = (key: string) => {
+    const val = process.env[key];
+    if (val) {
+      const trimmed = val.trim();
+      try {
+        const parsed = new URL(trimmed);
+        if (parsed.hostname === "undefined" || !parsed.hostname) {
+          throw new Error("Invalid hostname");
+        }
+      } catch {
+        console.warn(`[Safeguard] Environment variable ${key} has an invalid URL value: "${val}". Overriding to http://localhost:3000 during build.`);
+        process.env[key] = "http://localhost:3000";
+      }
+    }
+  };
+  checkAndSanitize("AUTH_URL");
+  checkAndSanitize("NEXTAUTH_URL");
+})();
+
 import GoogleProvider from "next-auth/providers/google";
 import type { NextAuthConfig } from "next-auth";
 

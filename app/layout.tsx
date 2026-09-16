@@ -14,7 +14,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const getMetadataBase = () => {
+  const url = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+  try {
+    const parsed = new URL(url.trim());
+    if (parsed.hostname === "undefined" || !parsed.hostname) {
+      throw new Error("Invalid hostname");
+    }
+    return parsed;
+  } catch {
+    return new URL("http://localhost:3000");
+  }
+};
+
 export const metadata: Metadata = {
+  metadataBase: getMetadataBase(),
   title: "巧鈺好飾 CMS 後台管理系統",
   description: "巧鈺好飾 JADE Meet Metal | 後台管理系統",
 };
