@@ -15,16 +15,25 @@ const geistMono = Geist_Mono({
 });
 
 const getMetadataBase = () => {
-  const url = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
-  try {
-    const parsed = new URL(url.trim());
-    if (parsed.hostname === "undefined" || !parsed.hostname) {
-      throw new Error("Invalid hostname");
-    }
-    return parsed;
-  } catch {
-    return new URL("http://localhost:3000");
+  let url =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXTAUTH_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+  url = url.trim();
+  if (!/^https?:\/\//i.test(url)) {
+    url = `https://${url}`;
   }
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname && parsed.hostname !== "undefined") {
+      return parsed;
+    }
+  } catch {
+    // fallback below
+  }
+  return new URL("http://localhost:3000");
 };
 
 export const metadata: Metadata = {
