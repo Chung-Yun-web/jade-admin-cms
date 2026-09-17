@@ -23,7 +23,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("products"); // "products" | "crafts" | "members"
   const [productsData, setProductsData] = useState({ series: [], products: [] });
   const [craftsData, setCraftsData] = useState({ categories: [], crafts: [] });
-  const [membersData, setMembersData] = useState({ members: [], stats: { generalCount: 0, partnerCount: 0, totalMembers: 0 } });
+  const [membersData, setMembersData] = useState({ members: [], stats: { generalCount: 0, partnerCount: 0, totalMembers: 0, adminRoleCount: 0 } });
   const [isLoading, setIsLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
   const [isSortingMode, setIsSortingMode] = useState(false);
@@ -32,6 +32,7 @@ export default function AdminDashboard() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingCraft, setEditingCraft] = useState(null);
   const [confirmingMember, setConfirmingMember] = useState(null);
+  const [confirmingRoleMember, setConfirmingRoleMember] = useState(null);
   const [editingSeries, setEditingSeries] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingVariantIndex, setUploadingVariantIndex] = useState(null);
@@ -157,7 +158,10 @@ export default function AdminDashboard() {
         const res = await fetch("/api/admin/members");
         const data = await res.json();
         if (data.success) {
-          setMembersData({ members: data.members || [], stats: data.stats || { generalCount: 0, partnerCount: 0, totalMembers: 0 } });
+          setMembersData({
+            members: data.members || [],
+            stats: data.stats || { generalCount: 0, partnerCount: 0, totalMembers: 0, adminRoleCount: 0 },
+          });
         }
       }
     } catch (err) {
@@ -187,6 +191,31 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       alert("更新會員身份時發生錯誤！");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRoleChange = async () => {
+    if (!confirmingRoleMember) return;
+    const targetRole = confirmingRoleMember.targetRole || "admin";
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/members", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: confirmingRoleMember._id, role: targetRole }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(targetRole === "admin" ? "已成功設定為管理員 (admin)！" : "已成功設定為一般權限 (general)！");
+        setConfirmingRoleMember(null);
+        fetchData();
+      } else {
+        alert(`更新失敗: ${data.message}`);
+      }
+    } catch (err) {
+      alert("更新管理員權限時發生錯誤！");
     } finally {
       setIsSubmitting(false);
     }
@@ -787,7 +816,7 @@ export default function AdminDashboard() {
           // 4. 會員專區頁面
           <div className="space-y-8">
             {/* 上方數據統計區 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between">
                 <span className="text-sm font-medium text-gray-500">總會員數</span>
                 <span className="text-3xl font-bold text-gray-900 mt-2">{membersData.stats.totalMembers}</span>
@@ -799,6 +828,10 @@ export default function AdminDashboard() {
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between">
                 <span className="text-sm font-medium text-gray-500">商店會員 (partner)</span>
                 <span className="text-3xl font-bold text-gray-900 mt-2">{membersData.stats.partnerCount}</span>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between">
+                <span className="text-sm font-medium text-gray-500">後台管理員 (admin)</span>
+                <span className="text-3xl font-bold text-purple-700 mt-2">{membersData.stats.adminRoleCount ?? 0}</span>
               </div>
             </div>
 
@@ -814,8 +847,9 @@ export default function AdminDashboard() {
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">會員</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">身份 (MEMBER)</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">管理 (ROLE)</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">註冊時間</th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">操作</th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">會員身份操作</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200 text-sm">
@@ -838,6 +872,34 @@ export default function AdminDashboard() {
                           }`}>
                             {(member.member || "general") === "partner" ? "商店會員" : "一般會員"}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                              (member.role || "general") === "admin"
+                                ? "bg-purple-50 text-purple-700 border-purple-200"
+                                : "bg-gray-50 text-gray-700 border-gray-200"
+                            }`}>
+                              {(member.role || "general") === "admin" ? "管理員 (admin)" : "一般 (general)"}
+                            </span>
+                            {(member.role || "general") === "admin" ? (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmingRoleMember({ ...member, targetRole: "general" })}
+                                className="px-2.5 py-1 text-xs bg-amber-50 text-amber-700 rounded border border-amber-200 hover:bg-amber-100 font-medium transition-colors"
+                              >
+                                切換為 general
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmingRoleMember({ ...member, targetRole: "admin" })}
+                                className="px-2.5 py-1 text-xs bg-purple-50 text-purple-700 rounded border border-purple-200 hover:bg-purple-100 font-medium transition-colors"
+                              >
+                                切換為 admin
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-500">
                           {member.createdAt ? new Date(member.createdAt).toLocaleDateString("zh-TW") : "無紀錄"}
@@ -863,7 +925,7 @@ export default function AdminDashboard() {
                     ))}
                     {membersData.members.length === 0 && (
                       <tr>
-                        <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                        <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
                           尚無會員資料。
                         </td>
                       </tr>
@@ -908,6 +970,58 @@ export default function AdminDashboard() {
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium shadow-sm disabled:bg-indigo-400"
               >
                 {isSubmitting ? "更新中..." : "確認轉換"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 會員角色 (ROLE) 切換確認 Modal */}
+      {confirmingRoleMember && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-6 animate-scale-up">
+            <div className="text-center space-y-3">
+              <h3 className="text-lg font-bold text-gray-900">確認切換後台管理權限 (ROLE)？</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                您即將把會員 <span className="font-semibold text-indigo-600">{confirmingRoleMember.name}</span> ({confirmingRoleMember.email}) 的管理權限從{" "}
+                <span className="font-semibold text-gray-800">
+                  {confirmingRoleMember.role === "admin" ? "管理員 (admin)" : "一般 (general)"}
+                </span>{" "}
+                切換為{" "}
+                <span className={`font-semibold ${confirmingRoleMember.targetRole === "admin" ? "text-purple-600" : "text-amber-600"}`}>
+                  {confirmingRoleMember.targetRole === "admin" ? "管理員 (admin)" : "一般 (general)"}
+                </span>。
+              </p>
+              {confirmingRoleMember.targetRole === "general" && (
+                <div className="text-xs text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200 text-left">
+                  ⚠️ <strong>注意</strong>：切換為 general 後，該帳號將無法登入或操作此後台管理系統。
+                </div>
+              )}
+              {confirmingRoleMember.targetRole === "admin" && (
+                <div className="text-xs text-purple-700 bg-purple-50 p-3 rounded-lg border border-purple-200 text-left">
+                  💡 <strong>提示</strong>：切換為 admin 後，該帳號將擁有完整後台管理權限（商品、工藝、會員）。
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setConfirmingRoleMember(null)}
+                className="px-4 py-2 border rounded-md text-sm text-gray-600 hover:bg-gray-50 font-medium"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleRoleChange}
+                disabled={isSubmitting}
+                className={`px-4 py-2 text-white rounded-md text-sm font-medium shadow-sm disabled:opacity-50 ${
+                  confirmingRoleMember.targetRole === "admin"
+                    ? "bg-purple-600 hover:bg-purple-700"
+                    : "bg-amber-600 hover:bg-amber-700"
+                }`}
+              >
+                {isSubmitting ? "更新中..." : "確認切換"}
               </button>
             </div>
           </div>

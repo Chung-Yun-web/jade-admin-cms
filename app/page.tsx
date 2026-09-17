@@ -5,8 +5,6 @@ import { useState } from "react";
 import { ShieldAlert, ShieldX, LogOut, Loader2 } from "lucide-react";
 import AdminDashboard from "./AdminDashboard";
 
-const ADMIN_EMAILS = ["alexli9118@gmail.com", "cc731228@gmail.com"];
-
 export default function AdminRootPage() {
   const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
@@ -69,11 +67,10 @@ export default function AdminRootPage() {
     );
   }
 
-  // 3. 已登入但非白名單管理員：原地顯示 Access Denied 介面
-  const isEmailAdmin =
-    session.user.email && ADMIN_EMAILS.includes(session.user.email);
+  // 3. 已登入但非管理員（role !== "admin"）：原地顯示 Access Denied 介面
+  const isAdmin = (session.user as any)?.role === "admin";
 
-  if (!isEmailAdmin) {
+  if (!isAdmin) {
     const handleLogout = async () => {
       setIsLoading(true);
       try {
@@ -94,14 +91,17 @@ export default function AdminRootPage() {
             存取遭拒 ACCESS DENIED
           </h2>
           <p className="text-xs text-red-400 tracking-widest uppercase mb-6 font-light">
-            未授權的帳號
+            非管理員帳號
           </p>
           <div className="mb-6 px-4 py-2 bg-stone-50 border border-stone-100 rounded-xl text-stone-600 text-xs tracking-wider">
-            <span>當前登入：</span>
+            <span>當前帳號：</span>
             <span className="font-mono text-stone-900 font-normal">{session.user.email}</span>
+            <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-stone-200 text-stone-700 rounded">
+              {(session.user as any)?.role || "general"}
+            </span>
           </div>
           <p className="text-xs sm:text-sm text-stone-500 font-light tracking-widest leading-relaxed mb-8 max-w-[320px]">
-            您的 Google 帳號不在此系統的管理員白名單內。若您是系統管理員，請確認是否使用了正確的 Google 帳號。
+            您的帳號目前尚未具備管理員權限（role 為 admin 才能進入）。若您是系統管理員，請確認是否使用了正確的 Google 帳號，或聯絡管理員指派權限。
           </p>
           <button
             onClick={handleLogout}

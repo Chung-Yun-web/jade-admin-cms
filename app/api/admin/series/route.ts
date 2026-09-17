@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
-import { auth } from "@/auth";
+import { auth, isUserAdmin } from "@/auth";
 
 export async function PUT(req: NextRequest) {
   try {
     const session = await auth();
-    const adminEmails = ["alexli9118@gmail.com", "cc731228@gmail.com"];
-    if (!session || !session.user || !adminEmails.includes(session.user.email || "")) {
+    if (!isUserAdmin(session)) {
       return NextResponse.json({ success: false, message: "未授權" }, { status: 401 });
     }
 

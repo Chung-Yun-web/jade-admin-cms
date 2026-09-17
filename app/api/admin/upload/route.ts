@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { auth } from "@/auth";
+import { auth, isUserAdmin } from "@/auth";
 
 // 初始化 Cloudflare R2 Client (S3 相容 API)
 const s3Client = new S3Client({
@@ -16,8 +16,7 @@ export async function POST(req: NextRequest) {
   try {
     // 1. 管理員權限檢查
     const session = await auth();
-    const adminEmails = ["alexli9118@gmail.com", "cc731228@gmail.com"];
-    if (!session || !session.user || !adminEmails.includes(session.user.email || "")) {
+    if (!isUserAdmin(session)) {
       return NextResponse.json({ success: false, message: "未授權" }, { status: 401 });
     }
 

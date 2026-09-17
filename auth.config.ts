@@ -56,24 +56,17 @@ export default {
         return false; // Automatically redirects to pages.signIn ("/login")
       }
 
-      // 3. Admin emails whitelist check
-      const adminEmails = ["alexli9118@gmail.com", "cc731228@gmail.com"];
-      const userEmail = auth.user?.email || "";
-      if (!adminEmails.includes(userEmail)) {
+      // 3. Admin role check
+      const isAdmin = (auth.user as any)?.role === "admin";
+      if (!isAdmin) {
         return Response.redirect(new URL("/unauthorized", request.nextUrl));
       }
 
       return true;
     },
     async session({ session, token }) {
-      if (session.user) {
-        // In lightweight middleware contexts, check the email whitelist
-        const adminEmails = ["alexli9118@gmail.com", "cc731228@gmail.com"];
-        if (adminEmails.includes(session.user.email || "")) {
-          (session.user as any).role = "admin";
-        } else {
-          (session.user as any).role = "general";
-        }
+      if (session.user && token) {
+        (session.user as any).role = token.role || (session.user as any).role || "general";
       }
       return session;
     },

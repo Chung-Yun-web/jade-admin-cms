@@ -40,13 +40,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user && token) {
         session.user.id = (token.id || token.sub) as string;
-        (session.user as any).role = token.role || "general";
         (session.user as any).isNewUser = token.isNewUser || false;
         
-        // Assign admin role if email is in the administrator whitelist
-        const adminEmails = ["alexli9118@gmail.com", "cc731228@gmail.com"];
-        if (adminEmails.includes(session.user.email || "")) {
-          (session.user as any).role = "admin";
+        // Query MongoDB for the latest role dynamically
+        try {
+          if (session.user.email) {
+            const client = await clientPromise;
+            const db = client.db();
+            const dbUser = await db.collection("users").findOne(
+              { email: session.user.email },
+              { projection: { role: 1 } }
+            );
+            (session.user as any).role = dbUser?.role || (token.role as string) || "general";
+          } else {
+            (session.user as any).role = (token.role as string) || "general";
+          }
+        } catch (err) {
+          console.error("Error fetching user role for session:", err);
+          (session.user as any).role = (token.role as string) || "general";
         }
       }
       return session;
@@ -61,4 +72,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }
   },
 });
+
+export function isUserAdmin(session: any): boolean {
+  return session?.user?.role === "admin";
+}
+
 
