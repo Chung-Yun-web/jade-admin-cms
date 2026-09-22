@@ -18,12 +18,33 @@ import {
   useSortable
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { OrderStats } from "@/components/orders/OrderStats";
+import { OrderList } from "@/components/orders/OrderList";
+import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
+import { PrintPreviewModal } from "@/components/orders/PrintPreviewModal";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState("products"); // "products" | "crafts" | "members"
+  const [activeTab, setActiveTab] = useState("products"); // "products" | "crafts" | "orders" | "members"
   const [productsData, setProductsData] = useState({ series: [], products: [] });
   const [craftsData, setCraftsData] = useState({ categories: [], crafts: [] });
   const [membersData, setMembersData] = useState({ members: [], stats: { generalCount: 0, partnerCount: 0, totalMembers: 0, adminRoleCount: 0 } });
+  
+  // Orders State
+  const [orders, setOrders] = useState([]);
+  const [ordersStats, setOrdersStats] = useState({
+    unshippedCount: 0,
+    unshippedTotal: 0,
+    insuredHomeCount: 0,
+    cvsCount: 0,
+    shippedCount: 0,
+  });
+  const [ordersTab, setOrdersTab] = useState("UNSHIPPED");
+  const [ordersSearch, setOrdersSearch] = useState("");
+  const [detailOrder, setDetailOrder] = useState(null);
+  const [printOrder, setPrintOrder] = useState(null);
+  const [printInitialType, setPrintInitialType] = useState("INSURED_HOME");
+  const [isOrdersLoading, setIsOrdersLoading] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
   const [isSortingMode, setIsSortingMode] = useState(false);
@@ -154,6 +175,8 @@ export default function AdminDashboard() {
         if (data.success) {
           setCraftsData({ categories: data.categories || [], crafts: data.crafts || [] });
         }
+      } else if (activeTab === "orders") {
+        await fetchOrders(ordersTab, ordersSearch);
       } else if (activeTab === "members") {
         const res = await fetch("/api/admin/members");
         const data = await res.json();
@@ -169,6 +192,88 @@ export default function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchOrders = async (tab = ordersTab, query = ordersSearch) => {
+    setIsOrdersLoading(true);
+    try {
+      const res = await fetch(`/api/admin/orders?tab=${tab}&search=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      if (data.success) {
+        setOrders(data.orders || []);
+        if (data.stats) {
+          setOrdersStats(data.stats);
+        }
+      } else {
+        alert("載入訂單失敗: " + (data.message || ""));
+      }
+    } catch (err) {
+      console.error("載入訂單資料出錯:", err);
+    } finally {
+      setIsOrdersLoading(false);
+    }
+  };
+
+  const handleToggleOrderStatus = async (order) => {
+    const nextStatus = order.shippingStatus === "SHIPPED" ? "UNSHIPPED" : "SHIPPED";
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber: order.orderNumber, shippingStatus: nextStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`訂單 ${order.orderNumber} 狀態已更新為【${nextStatus === "SHIPPED" ? "已出貨 (並連動更新規格庫存為售出)" : "待出貨"}】！`);
+        fetchOrders(ordersTab, ordersSearch);
+        if (detailOrder && detailOrder.orderNumber === order.orderNumber) {
+          setDetailOrder({
+            ...detailOrder,
+            shippingStatus: nextStatus,
+            shippedAt: nextStatus === "SHIPPED" ? new Date().toISOString() : null,
+          });
+        }
+      } else {
+        alert(`更新狀態失敗: ${data.message}`);
+      }
+    } catch (err) {
+      console.error("更新訂單狀態錯誤:", err);
+      alert("更新訂單狀態時發生錯誤！");
+    }
+  };
+
+  const handleUpdateOrderTrace = async (orderNumber, trace) => {
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber, trace }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchOrders(ordersTab, ordersSearch);
+        if (detailOrder && detailOrder.orderNumber === orderNumber) {
+          setDetailOrder({
+            ...detailOrder,
+            trace: trace,
+          });
+        }
+        return true;
+      } else {
+        alert(`儲存物流單號失敗: ${data.message}`);
+      }
+    } catch (err) {
+      console.error("儲存物流單號出錯:", err);
+      alert("儲存物流單號時發生錯誤！");
+    }
+    return false;
+  };
+
+  const handleOpenPrint = (order, type) => {
+    const isCvs = order.shippingInfo?.method === "CVS_STORE" || Boolean(order.shippingInfo?.storeId);
+    const targetType = type || (isCvs ? "CVS_STORE" : "INSURED_HOME");
+    setPrintInitialType(targetType);
+    setPrintOrder(order);
   };
 
   const handleUpgradeMember = async () => {
@@ -468,6 +573,16 @@ export default function AdminDashboard() {
                 }`}
               >
                 工藝編輯
+              </button>
+              <button
+                onClick={() => setActiveTab("orders")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "orders"
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+              >
+                訂單與出貨管理
               </button>
               <button
                 onClick={() => setActiveTab("members")}
@@ -812,6 +927,29 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
+        ) : activeTab === "orders" ? (
+          // 3. 訂單與出貨管理頁面
+          <div className="space-y-8">
+            <OrderStats stats={ordersStats} />
+            <OrderList
+              orders={orders}
+              currentTab={ordersTab}
+              onTabChange={(tab) => {
+                setOrdersTab(tab);
+                fetchOrders(tab, ordersSearch);
+              }}
+              searchQuery={ordersSearch}
+              onSearchChange={(q) => {
+                setOrdersSearch(q);
+                fetchOrders(ordersTab, q);
+              }}
+              onSelectOrder={(order) => setDetailOrder(order)}
+              onPrintOrder={(order, type) => handleOpenPrint(order, type)}
+              onToggleStatus={handleToggleOrderStatus}
+              onUpdateTrace={handleUpdateOrderTrace}
+              isLoading={isOrdersLoading}
+            />
+          </div>
         ) : (
           // 4. 會員專區頁面
           <div className="space-y-8">
@@ -1026,6 +1164,32 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 訂單詳情 Modal */}
+      {detailOrder && (
+        <OrderDetailModal
+          order={detailOrder}
+          onClose={() => setDetailOrder(null)}
+          onPrint={(order, type) => {
+            setDetailOrder(null);
+            handleOpenPrint(order, type);
+          }}
+          onToggleStatus={handleToggleOrderStatus}
+          onUpdateTrace={handleUpdateOrderTrace}
+        />
+      )}
+
+      {/* 出貨標籤列印預覽 Modal */}
+      {printOrder && (
+        <PrintPreviewModal
+          order={printOrder}
+          initialType={printInitialType}
+          onClose={() => setPrintOrder(null)}
+          onPrintSuccess={(order) => {
+            fetchOrders(ordersTab, ordersSearch);
+          }}
+        />
       )}
 
       {/* 5. 商品編輯 Modal */}
