@@ -22,6 +22,7 @@ import { OrderStats } from "@/components/orders/OrderStats";
 import { OrderList } from "@/components/orders/OrderList";
 import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
 import { PrintPreviewModal } from "@/components/orders/PrintPreviewModal";
+import { OutletManager } from "@/components/outlet/OutletManager";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("products"); // "products" | "crafts" | "orders" | "members"
@@ -565,6 +566,16 @@ export default function AdminDashboard() {
                 商品編輯
               </button>
               <button
+                onClick={() => setActiveTab("outlet")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "outlet"
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+              >
+                Outlet編輯
+              </button>
+              <button
                 onClick={() => setActiveTab("crafts")}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === "crafts"
@@ -788,6 +799,9 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
+        ) : activeTab === "outlet" ? (
+          // 2.5 Outlet 特賣編輯頁面
+          <OutletManager />
         ) : activeTab === "crafts" ? (
           // 3. 工藝編輯頁面
           <div className="space-y-12">

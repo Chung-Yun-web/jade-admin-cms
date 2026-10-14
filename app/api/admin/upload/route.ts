@@ -82,6 +82,8 @@ export async function POST(req: NextRequest) {
     // 拼接成純 ASCII 的 R2 Key
     const key = cleanProductId === "crafts"
       ? `crafts/${cleanVariantId}/${filename}`
+      : cleanProductId === "outlet" || cleanProductId === "outlets"
+      ? `outlets/${cleanVariantId}/${filename}`
       : `products/${cleanProductId}/${cleanVariantId}/${filename}`;
 
     // 6. 執行 S3 / R2 上傳指令
