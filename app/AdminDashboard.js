@@ -23,12 +23,14 @@ import { OrderList } from "@/components/orders/OrderList";
 import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
 import { PrintPreviewModal } from "@/components/orders/PrintPreviewModal";
 import { OutletManager } from "@/components/outlet/OutletManager";
+import { PayoutManager } from "@/components/payouts/PayoutManager";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState("products"); // "products" | "crafts" | "orders" | "members"
+  const [activeTab, setActiveTab] = useState("products"); // "products" | "crafts" | "orders" | "members" | "outlet" | "payouts"
   const [productsData, setProductsData] = useState({ series: [], products: [] });
   const [craftsData, setCraftsData] = useState({ categories: [], crafts: [] });
   const [membersData, setMembersData] = useState({ members: [], stats: { generalCount: 0, partnerCount: 0, totalMembers: 0, adminRoleCount: 0 } });
+  const [pendingPayoutCount, setPendingPayoutCount] = useState(0);
   
   // Orders State
   const [orders, setOrders] = useState([]);
@@ -55,6 +57,7 @@ export default function AdminDashboard() {
   const [editingCraft, setEditingCraft] = useState(null);
   const [confirmingMember, setConfirmingMember] = useState(null);
   const [confirmingRoleMember, setConfirmingRoleMember] = useState(null);
+  const [editingRewardMember, setEditingRewardMember] = useState(null);
   const [editingSeries, setEditingSeries] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingVariantIndex, setUploadingVariantIndex] = useState(null);
@@ -157,8 +160,21 @@ export default function AdminDashboard() {
     });
   };
 
+  const fetchPendingPayoutCount = async () => {
+    try {
+      const res = await fetch("/api/admin/payouts?status=審核中");
+      const data = await res.json();
+      if (data.success && data.stats) {
+        setPendingPayoutCount(data.stats.pendingCount || 0);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchPendingPayoutCount();
   }, [activeTab]);
 
   const fetchData = async () => {
@@ -187,6 +203,8 @@ export default function AdminDashboard() {
             stats: data.stats || { generalCount: 0, partnerCount: 0, totalMembers: 0, adminRoleCount: 0 },
           });
         }
+      } else if (activeTab === "payouts") {
+        await fetchPendingPayoutCount();
       }
     } catch (err) {
       console.error("載入資料失敗:", err);
@@ -322,6 +340,29 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       alert("更新管理員權限時發生錯誤！");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveRewardRate = async (userId, newRate) => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/members", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, rewardRate: Number(newRate) }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("回饋比例更新成功！");
+        setEditingRewardMember(null);
+        fetchData();
+      } else {
+        alert(`更新失敗: ${data.message}`);
+      }
+    } catch (err) {
+      alert("更新回饋比例時發生錯誤！");
     } finally {
       setIsSubmitting(false);
     }
@@ -594,6 +635,23 @@ export default function AdminDashboard() {
                 }`}
               >
                 訂單與出貨管理
+              </button>
+              <button
+                onClick={() => setActiveTab("payouts")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  activeTab === "payouts"
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+              >
+                <span>回饋審核與撥款</span>
+                {pendingPayoutCount > 0 && (
+                  <span className={`px-1.5 py-0.2 rounded-full text-xs font-bold ${
+                    activeTab === "payouts" ? "bg-amber-400 text-amber-950" : "bg-amber-500 text-white"
+                  }`}>
+                    {pendingPayoutCount}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setActiveTab("members")}
@@ -964,8 +1022,23 @@ export default function AdminDashboard() {
               isLoading={isOrdersLoading}
             />
           </div>
+        ) : activeTab === "payouts" ? (
+          // 4. 回饋審核與撥款頁面
+          <div className="space-y-8">
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 tracking-wide">
+                  商店會員 ｜ 回饋金提領與撥款管理
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  審核商店會員已申請之訂單回饋提領紀錄，查看撥款金融資訊與訂單明細，並一鍵確認撥款完成。
+                </p>
+              </div>
+            </div>
+            <PayoutManager onRefreshGlobalStats={fetchPendingPayoutCount} />
+          </div>
         ) : (
-          // 4. 會員專區頁面
+          // 5. 會員專區頁面
           <div className="space-y-8">
             {/* 上方數據統計區 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -999,6 +1072,7 @@ export default function AdminDashboard() {
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">會員</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">身份 (MEMBER)</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">回饋比例 (rewardRate)</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">管理 (ROLE)</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">註冊時間</th>
                       <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">會員身份操作</th>
@@ -1024,6 +1098,24 @@ export default function AdminDashboard() {
                           }`}>
                             {(member.member || "general") === "partner" ? "商店會員" : "一般會員"}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(member.member || "general") === "partner" ? (
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                {member.rewardRate ?? 15}%
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setEditingRewardMember({ ...member, rate: member.rewardRate ?? 15 })}
+                                className="px-2.5 py-1 text-xs bg-indigo-50 text-indigo-700 rounded border border-indigo-200 hover:bg-indigo-100 font-medium transition-colors"
+                              >
+                                編輯比例
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-xs">不適用 (-)</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
@@ -1077,7 +1169,7 @@ export default function AdminDashboard() {
                     ))}
                     {membersData.members.length === 0 && (
                       <tr>
-                        <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                        <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                           尚無會員資料。
                         </td>
                       </tr>
@@ -1106,6 +1198,12 @@ export default function AdminDashboard() {
                   {confirmingMember.targetStatus === "partner" ? "商店會員" : "一般會員"}
                 </span>。
               </p>
+              {confirmingMember.targetStatus === "partner" && (
+                <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200 text-left text-xs space-y-1">
+                  <span className="font-semibold text-emerald-900 block">💡 商店會員專屬回饋設定</span>
+                  <span className="text-emerald-800">升級後預設享有 <strong>15%</strong> 回饋比例，您亦可隨時在會員列表點擊「編輯比例」自訂調整。</span>
+                </div>
+              )}
             </div>
             <div className="flex justify-end space-x-3">
               <button
@@ -1174,6 +1272,87 @@ export default function AdminDashboard() {
                 }`}
               >
                 {isSubmitting ? "更新中..." : "確認切換"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 調整商店會員回饋比例 Modal */}
+      {editingRewardMember && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-6">
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-bold text-gray-900">調整商店會員回饋比例</h3>
+              <p className="text-xs text-gray-500">
+                為會員 <strong className="text-gray-800">{editingRewardMember.name || "未命名"}</strong> ({editingRewardMember.email}) 設定專屬商品回饋百分比。
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  回饋比例 (rewardRate %)：
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={editingRewardMember.rate}
+                    onChange={(e) => setEditingRewardMember({ ...editingRewardMember, rate: e.target.value })}
+                    className="w-full text-base font-semibold px-4 py-2.5 bg-stone-50 border border-stone-300 rounded-xl focus:ring-2 focus:ring-emerald-700 focus:outline-none"
+                    placeholder="例如: 15"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-gray-500">%</span>
+                </div>
+              </div>
+
+              {/* 快速選取預設值 */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">快速選擇:</span>
+                {[10, 15, 20, 25, 30].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setEditingRewardMember({ ...editingRewardMember, rate: preset })}
+                    className={`px-2.5 py-1 text-xs rounded-lg border transition-all ${
+                      Number(editingRewardMember.rate) === preset
+                        ? "bg-emerald-700 text-white border-emerald-700 font-semibold"
+                        : "bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100"
+                    }`}
+                  >
+                    {preset}%
+                  </button>
+                ))}
+              </div>
+
+              {/* 試算提示 */}
+              <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 text-xs text-stone-600">
+                試算：若該會員訂單商品小計為 NT$ 10,000，將獲得{" "}
+                <strong className="text-emerald-700 font-semibold">
+                  NT$ {Math.round(10000 * (Number(editingRewardMember.rate || 0) / 100)).toLocaleString()}
+                </strong>{" "}
+                提領回饋。
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingRewardMember(null)}
+                className="px-4 py-2 border rounded-xl text-xs text-gray-600 hover:bg-gray-50 font-medium"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleSaveRewardRate(editingRewardMember._id, editingRewardMember.rate)}
+                className="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold shadow-md disabled:opacity-50"
+              >
+                {isSubmitting ? "儲存中..." : "儲存比例"}
               </button>
             </div>
           </div>
