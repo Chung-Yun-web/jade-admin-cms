@@ -80,6 +80,21 @@ const SortableOutletRow: React.FC<SortableOutletRowProps> = ({
           </span>
         );
       case "reserved":
+        if (item.isSocialPromo) {
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-600 mr-1.5 animate-pulse" />
+                社團特惠保留
+              </span>
+              {item.promoCode && (
+                <span className="text-[10px] font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                  代碼: {item.promoCode}
+                </span>
+              )}
+            </div>
+          );
+        }
         return (
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
             <Clock className="w-3 h-3 mr-1 text-amber-600" />

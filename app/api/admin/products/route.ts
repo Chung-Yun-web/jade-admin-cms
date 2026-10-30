@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 import { auth, isUserAdmin } from "@/auth";
+import { generatePromoCode } from "@/lib/utils";
+
 
 export async function GET() {
   try {
@@ -79,11 +81,30 @@ export async function PUT(req: NextRequest) {
       updateData.status = "available";
     }
     if (Array.isArray(updateData.variants)) {
-      updateData.variants = updateData.variants.map((v: any) => ({
-        ...v,
-        status: v.status || "available"
-      }));
+      updateData.variants = updateData.variants.map((v: any) => {
+        const isSocialPromo = Boolean(v.isSocialPromo);
+        let promoCode = (v.promoCode || "").trim();
+        let status = v.status || "available";
+        if (isSocialPromo) {
+          status = "reserved";
+          if (!promoCode) {
+            promoCode = generatePromoCode();
+          }
+        } else {
+          if (status === "reserved" && v.isSocialPromo === false) {
+            status = "available";
+          }
+          promoCode = "";
+        }
+        return {
+          ...v,
+          status,
+          isSocialPromo,
+          promoCode,
+        };
+      });
     }
+
 
     const result = await db.collection("products").updateOne(
       { _id: new ObjectId(_id) },
@@ -124,11 +145,27 @@ export async function POST(req: NextRequest) {
       insertData.status = "available";
     }
     if (Array.isArray(insertData.variants)) {
-      insertData.variants = insertData.variants.map((v: any) => ({
-        ...v,
-        status: v.status || "available"
-      }));
+      insertData.variants = insertData.variants.map((v: any) => {
+        const isSocialPromo = Boolean(v.isSocialPromo);
+        let promoCode = (v.promoCode || "").trim();
+        let status = v.status || "available";
+        if (isSocialPromo) {
+          status = "reserved";
+          if (!promoCode) {
+            promoCode = generatePromoCode();
+          }
+        } else {
+          promoCode = "";
+        }
+        return {
+          ...v,
+          status,
+          isSocialPromo,
+          promoCode,
+        };
+      });
     }
+
 
     const result = await db.collection("products").insertOne({
       ...insertData,

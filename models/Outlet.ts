@@ -12,6 +12,8 @@ export interface IOutlet extends Document {
   status: "available" | "reserved" | "sold" | "archived";
   reservedUntil?: Date | null;
   sortOrder: number;
+  isSocialPromo: boolean;
+  promoCode?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -74,6 +76,16 @@ const OutletSchema = new Schema<IOutlet>(
       type: Number,
       default: 0,
       index: true,
+    },
+    isSocialPromo: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    promoCode: {
+      type: String,
+      default: "",
+      trim: true,
     },
   },
   {

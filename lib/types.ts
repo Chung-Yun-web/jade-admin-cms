@@ -9,7 +9,10 @@ export interface ProductVariant {
   custom_notice?: string;
   ready_made_note?: string;
   lead_time_days?: number;
+  isSocialPromo?: boolean;
+  promoCode?: string;
 }
+
 
 export interface ProductPolicy {
   specifications: string; // 規格與材質說明

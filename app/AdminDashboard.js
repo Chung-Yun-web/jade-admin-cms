@@ -24,13 +24,16 @@ import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
 import { PrintPreviewModal } from "@/components/orders/PrintPreviewModal";
 import { OutletManager } from "@/components/outlet/OutletManager";
 import { PayoutManager } from "@/components/payouts/PayoutManager";
+import { SocialPromoManager } from "@/components/social-promo/SocialPromoManager";
+import { generatePromoCode } from "@/lib/utils";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState("products"); // "products" | "crafts" | "orders" | "members" | "outlet" | "payouts"
+  const [activeTab, setActiveTab] = useState("products"); // "products" | "crafts" | "orders" | "members" | "outlet" | "payouts" | "social-promo"
   const [productsData, setProductsData] = useState({ series: [], products: [] });
   const [craftsData, setCraftsData] = useState({ categories: [], crafts: [] });
   const [membersData, setMembersData] = useState({ members: [], stats: { generalCount: 0, partnerCount: 0, totalMembers: 0, adminRoleCount: 0 } });
   const [pendingPayoutCount, setPendingPayoutCount] = useState(0);
+  const [socialPromoCount, setSocialPromoCount] = useState(0);
   
   // Orders State
   const [orders, setOrders] = useState([]);
@@ -172,10 +175,24 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchSocialPromoCount = async () => {
+    try {
+      const res = await fetch("/api/admin/social-promos");
+      const data = await res.json();
+      if (data.success && data.stats) {
+        setSocialPromoCount(data.stats.totalCount || 0);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchPendingPayoutCount();
+    fetchSocialPromoCount();
   }, [activeTab]);
+
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -490,21 +507,40 @@ export default function AdminDashboard() {
 
       // Clean variants array
       if (cleanedProduct.variants && Array.isArray(cleanedProduct.variants)) {
-        cleanedProduct.variants = cleanedProduct.variants.map((v, idx) => ({
-          name: v.name || "",
-          price: Number(v.price) || 0,
-          image: v.image || "",
-          images: Array.isArray(v.images) ? v.images.filter(Boolean) : (v.image ? [v.image] : []),
-          status: v.status || "available",
-          type: v.type || "ready_made",
-          sort_order: v.sort_order === undefined ? idx : Number(v.sort_order),
-          custom_notice: v.custom_notice || "",
-          ready_made_note: v.ready_made_note || "",
-          lead_time_days: v.lead_time_days === undefined ? 10 : Number(v.lead_time_days)
-        }));
+        cleanedProduct.variants = cleanedProduct.variants.map((v, idx) => {
+          const isSocialPromo = Boolean(v.isSocialPromo);
+          let promoCode = (v.promoCode || "").trim();
+          let status = v.status || "available";
+          if (isSocialPromo) {
+            status = "reserved";
+            if (!promoCode) {
+              promoCode = generatePromoCode();
+            }
+          } else {
+            if (status === "reserved" && v.isSocialPromo === false) {
+              status = "available";
+            }
+            promoCode = "";
+          }
+          return {
+            name: v.name || "",
+            price: Number(v.price) || 0,
+            image: v.image || "",
+            images: Array.isArray(v.images) ? v.images.filter(Boolean) : (v.image ? [v.image] : []),
+            status,
+            type: v.type || "ready_made",
+            sort_order: v.sort_order === undefined ? idx : Number(v.sort_order),
+            custom_notice: v.custom_notice || "",
+            ready_made_note: v.ready_made_note || "",
+            lead_time_days: v.lead_time_days === undefined ? 10 : Number(v.lead_time_days),
+            isSocialPromo,
+            promoCode,
+          };
+        });
       } else {
         cleanedProduct.variants = [];
       }
+
       
       // Ensure craftIds is an array
       if (!Array.isArray(cleanedProduct.craftIds)) {
@@ -521,7 +557,9 @@ export default function AdminDashboard() {
         alert(isEdit ? "商品更新成功！" : "商品建立成功！");
         setEditingProduct(null);
         fetchData();
+        fetchSocialPromoCount();
       } else {
+
         alert(`${isEdit ? "更新" : "建立"}失敗: ${data.message}`);
       }
     } catch (err) {
@@ -617,7 +655,25 @@ export default function AdminDashboard() {
                 Outlet編輯
               </button>
               <button
+                onClick={() => setActiveTab("social-promo")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  activeTab === "social-promo"
+                    ? "bg-purple-700 text-white shadow-sm"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+              >
+                <span>社團特惠行銷管理</span>
+                {socialPromoCount > 0 && (
+                  <span className={`px-1.5 py-0.2 rounded-full text-xs font-bold ${
+                    activeTab === "social-promo" ? "bg-purple-200 text-purple-950" : "bg-purple-600 text-white"
+                  }`}>
+                    {socialPromoCount}
+                  </span>
+                )}
+              </button>
+              <button
                 onClick={() => setActiveTab("crafts")}
+
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === "crafts"
                     ? "bg-indigo-600 text-white shadow-sm"
@@ -860,7 +916,24 @@ export default function AdminDashboard() {
         ) : activeTab === "outlet" ? (
           // 2.5 Outlet 特賣編輯頁面
           <OutletManager />
+        ) : activeTab === "social-promo" ? (
+          // 2.8 社團特惠行銷管理頁面
+          <SocialPromoManager
+            onNavigateToProduct={(prodId) => {
+              const p = productsData.products.find((prod) => String(prod._id) === String(prodId));
+              if (p) {
+                setEditingProduct(p);
+                setActiveTab("products");
+              } else {
+                setActiveTab("products");
+              }
+            }}
+            onNavigateToOutlet={(_outletId) => {
+              setActiveTab("outlet");
+            }}
+          />
         ) : activeTab === "crafts" ? (
+
           // 3. 工藝編輯頁面
           <div className="space-y-12">
             {/* 提示資料庫為空 */}
@@ -1651,8 +1724,13 @@ export default function AdminDashboard() {
                           <select
                             value={v.status || "available"}
                             onChange={(e) => {
+                              const newStatus = e.target.value;
                               const updated = [...editingProduct.variants];
-                              updated[index].status = e.target.value;
+                              if (newStatus !== "reserved" && updated[index].isSocialPromo) {
+                                updated[index].isSocialPromo = false;
+                                updated[index].promoCode = "";
+                              }
+                              updated[index].status = newStatus;
                               setEditingProduct({ ...editingProduct, variants: updated });
                             }}
                             className="w-full text-xs border p-1 rounded bg-white outline-none"
@@ -1664,6 +1742,85 @@ export default function AdminDashboard() {
                           </select>
                         </div>
                       </div>
+
+                      {/* 社團特惠長效保留開關 */}
+                      <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-pink-50 border border-purple-200/80 rounded-lg p-2.5 mt-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-purple-700 font-bold text-xs flex items-center gap-1">
+                              <span>🎁</span>
+                              <span>社團特惠保留</span>
+                            </span>
+                            {v.isSocialPromo && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-purple-600 text-white animate-pulse">
+                                長效保留中
+                              </span>
+                            )}
+                            <span className="text-[10px] text-purple-700/80 hidden sm:inline">
+                              {v.isSocialPromo ? "（不受 20 分鐘計時自動過期影響）" : "（開啟後自動設為保留並生成驗證碼）"}
+                            </span>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(v.isSocialPromo)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                const updated = [...editingProduct.variants];
+                                if (checked) {
+                                  updated[index].isSocialPromo = true;
+                                  updated[index].status = "reserved";
+                                  if (!updated[index].promoCode) {
+                                    updated[index].promoCode = generatePromoCode();
+                                  }
+                                } else {
+                                  updated[index].isSocialPromo = false;
+                                  updated[index].status = "available";
+                                  updated[index].promoCode = "";
+                                }
+                                setEditingProduct({ ...editingProduct, variants: updated });
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                          </label>
+                        </div>
+
+                        {v.isSocialPromo && (
+                          <div className="mt-2 pt-2 border-t border-purple-200/60 flex items-center justify-between gap-2 text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] text-gray-600 font-medium">專屬驗證碼:</span>
+                              <span className="font-mono text-xs font-bold bg-white text-purple-900 px-2 py-0.5 rounded border border-purple-300 tracking-wider">
+                                {v.promoCode || "生成中..."}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (v.promoCode) {
+                                    navigator.clipboard.writeText(v.promoCode);
+                                    alert(`驗證碼 ${v.promoCode} 已複製到剪貼簿！`);
+                                  }
+                                }}
+                                className="px-2 py-0.5 bg-purple-600 text-white rounded text-[10px] hover:bg-purple-700 font-medium cursor-pointer"
+                              >
+                                複製代碼
+                              </button>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...editingProduct.variants];
+                                updated[index].promoCode = generatePromoCode();
+                                setEditingProduct({ ...editingProduct, variants: updated });
+                              }}
+                              className="text-[10px] text-purple-700 hover:underline cursor-pointer"
+                            >
+                              重新產生代碼
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Row 2 & 3: 規格詳細設定與排序 (結構化排版) */}
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end border-t pt-3 mt-2">
                         {/* 規格類型 */}

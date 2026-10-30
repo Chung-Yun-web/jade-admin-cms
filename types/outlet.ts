@@ -13,6 +13,9 @@ export interface OutletItem {
   status: OutletStatus;
   reservedUntil?: string | Date | null;
   sortOrder: number;
+  isSocialPromo?: boolean;
+  promoCode?: string;
   createdAt?: string | Date;
   updatedAt?: string | Date;
 }
+

@@ -15,10 +15,16 @@ import {
   Tag,
   DollarSign,
   Layers,
-  FileText
+  FileText,
+  Copy,
+  Check,
+  RefreshCw,
+  Gift
 } from "lucide-react";
 import { OutletItem, OutletStatus } from "@/types/outlet";
 import { getImageUrl } from "@/lib/image";
+import { generatePromoCode } from "@/lib/utils";
+
 
 interface OutletModalProps {
   isOpen: boolean;
@@ -69,6 +75,8 @@ export const OutletModal: React.FC<OutletModalProps> = ({
         status: outlet.status || "available",
         reservedUntil: outlet.reservedUntil || null,
         sortOrder: outlet.sortOrder ?? 0,
+        isSocialPromo: Boolean(outlet.isSocialPromo),
+        promoCode: outlet.promoCode || "",
       };
     }
     return {
@@ -83,6 +91,8 @@ export const OutletModal: React.FC<OutletModalProps> = ({
       status: "available",
       reservedUntil: null,
       sortOrder: 0,
+      isSocialPromo: false,
+      promoCode: "",
     };
   });
 
@@ -90,6 +100,39 @@ export const OutletModal: React.FC<OutletModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [manualImageUrl, setManualImageUrl] = useState("");
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  const handleToggleSocialPromo = (checked: boolean) => {
+    if (checked) {
+      const code = formData.promoCode || generatePromoCode();
+      setFormData((prev) => ({
+        ...prev,
+        isSocialPromo: true,
+        status: "reserved",
+        reservedUntil: null,
+        promoCode: code,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        isSocialPromo: false,
+        status: "available",
+        promoCode: "",
+      }));
+    }
+  };
+
+  const handleCopyCode = async () => {
+    if (!formData.promoCode) return;
+    try {
+      await navigator.clipboard.writeText(formData.promoCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch {
+      // fallback
+    }
+  };
+
 
   if (!isOpen) return null;
 
@@ -309,7 +352,14 @@ export const OutletModal: React.FC<OutletModalProps> = ({
                 </label>
                 <select
                   value={formData.status || "available"}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as OutletStatus })}
+                  onChange={(e) => {
+                    const newStatus = e.target.value as OutletStatus;
+                    if (newStatus !== "reserved" && formData.isSocialPromo) {
+                      setFormData({ ...formData, status: newStatus, isSocialPromo: false, promoCode: "" });
+                    } else {
+                      setFormData({ ...formData, status: newStatus });
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
                 >
                   <option value="available">🟢 現貨可售 (available)</option>
@@ -319,12 +369,79 @@ export const OutletModal: React.FC<OutletModalProps> = ({
                 </select>
               </div>
 
-              {/* Reserved Until (visible when status === 'reserved') */}
-              {formData.status === "reserved" && (
+              {/* Social Promo Long-term Reservation Switch */}
+              <div className="sm:col-span-2 bg-gradient-to-r from-purple-50 via-indigo-50 to-pink-50 border border-purple-200/80 rounded-xl p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                      <Gift className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-bold text-purple-950 cursor-pointer">
+                          啟用社團特惠保留
+                        </label>
+                        {formData.isSocialPromo && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs animate-pulse">
+                            長效保留生效中
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-purple-700/80 mt-0.5">
+                        開啟後自動將品項設為「預訂保留」，產生專屬驗證碼，且不受 20 分鐘計時自動過期影響。
+                      </p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formData.isSocialPromo)}
+                      onChange={(e) => handleToggleSocialPromo(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+
+                {formData.isSocialPromo && (
+                  <div className="mt-3 pt-3 border-t border-purple-200/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white/80 p-3 rounded-lg border border-purple-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-gray-700">專屬驗證碼：</span>
+                      <span className="font-mono text-sm font-bold bg-purple-100 text-purple-900 px-2.5 py-1 rounded border border-purple-300 tracking-wider">
+                        {formData.promoCode || "生成中..."}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCopyCode}
+                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded transition-colors shadow-2xs"
+                      >
+                        {copiedCode ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedCode ? "已複製！" : "複製驗證碼"}</span>
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newCode = generatePromoCode();
+                          setFormData((prev) => ({ ...prev, promoCode: newCode }));
+                        }}
+                        className="inline-flex items-center gap-1 text-xs text-purple-700 hover:text-purple-900 hover:underline"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>重新產生代碼</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Reserved Until (visible when status === 'reserved' AND not social promo) */}
+              {formData.status === "reserved" && !formData.isSocialPromo && (
                 <div className="sm:col-span-2 bg-amber-50 border border-amber-200 rounded-lg p-3 animate-fade-in">
                   <label className="block text-xs font-bold text-amber-800 mb-1 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-amber-600" />
-                    預訂保留截止時間 (選填)
+                    一般預訂保留截止時間 (選填)
                   </label>
                   <div className="flex items-center gap-3">
                     <input
@@ -363,6 +480,7 @@ export const OutletModal: React.FC<OutletModalProps> = ({
                   </p>
                 </div>
               )}
+
             </div>
           </div>
 

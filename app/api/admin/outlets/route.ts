@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 import { auth, isUserAdmin } from "@/auth";
+import { generatePromoCode } from "@/lib/utils";
+
 
 export async function GET() {
   try {
@@ -69,11 +71,22 @@ export async function POST(req: NextRequest) {
     }
 
     const validStatuses = ["available", "reserved", "sold", "archived"];
-    const status = validStatuses.includes(insertData.status) ? insertData.status : "available";
-
+    const isSocialPromo = Boolean(insertData.isSocialPromo);
+    let promoCode = (insertData.promoCode || "").trim();
+    let status = validStatuses.includes(insertData.status) ? insertData.status : "available";
     let reservedUntil: Date | null = null;
-    if (status === "reserved" && insertData.reservedUntil) {
-      reservedUntil = new Date(insertData.reservedUntil);
+
+    if (isSocialPromo) {
+      status = "reserved";
+      reservedUntil = null; // 社團特惠長效保留，不受 20 分鐘過期影響
+      if (!promoCode) {
+        promoCode = generatePromoCode();
+      }
+    } else {
+      promoCode = "";
+      if (status === "reserved" && insertData.reservedUntil) {
+        reservedUntil = new Date(insertData.reservedUntil);
+      }
     }
 
     const originalPrice =
@@ -92,6 +105,8 @@ export async function POST(req: NextRequest) {
       description: (insertData.description || "").trim(),
       status,
       reservedUntil,
+      isSocialPromo,
+      promoCode,
       sortOrder: Number(insertData.sortOrder) || 0,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -163,11 +178,25 @@ export async function PUT(req: NextRequest) {
     delete updateData.updatedAt;
 
     const validStatuses = ["available", "reserved", "sold", "archived"];
-    const status = validStatuses.includes(updateData.status) ? updateData.status : "available";
-
+    const isSocialPromo = Boolean(updateData.isSocialPromo);
+    let promoCode = (updateData.promoCode || "").trim();
+    let status = validStatuses.includes(updateData.status) ? updateData.status : "available";
     let reservedUntil: Date | null = null;
-    if (status === "reserved" && updateData.reservedUntil) {
-      reservedUntil = new Date(updateData.reservedUntil);
+
+    if (isSocialPromo) {
+      status = "reserved";
+      reservedUntil = null; // 社團特惠長效保留，不受 20 分鐘過期影響
+      if (!promoCode) {
+        promoCode = generatePromoCode();
+      }
+    } else {
+      if (status === "reserved" && updateData.isSocialPromo === false) {
+        status = "available";
+      }
+      promoCode = "";
+      if (status === "reserved" && updateData.reservedUntil) {
+        reservedUntil = new Date(updateData.reservedUntil);
+      }
     }
 
     const originalPrice =
@@ -185,6 +214,8 @@ export async function PUT(req: NextRequest) {
       description: (updateData.description || "").trim(),
       status,
       reservedUntil,
+      isSocialPromo,
+      promoCode,
       sortOrder: Number(updateData.sortOrder) || 0,
       updatedAt: new Date(),
     };
