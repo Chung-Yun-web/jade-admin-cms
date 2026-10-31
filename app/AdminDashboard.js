@@ -25,7 +25,7 @@ import { PrintPreviewModal } from "@/components/orders/PrintPreviewModal";
 import { OutletManager } from "@/components/outlet/OutletManager";
 import { PayoutManager } from "@/components/payouts/PayoutManager";
 import { SocialPromoManager } from "@/components/social-promo/SocialPromoManager";
-import { generatePromoCode } from "@/lib/utils";
+import { generatePromoCode, buildPromoDirectUrl } from "@/lib/utils";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("products"); // "products" | "crafts" | "orders" | "members" | "outlet" | "payouts" | "social-promo"
@@ -1787,36 +1787,95 @@ export default function AdminDashboard() {
                         </div>
 
                         {v.isSocialPromo && (
-                          <div className="mt-2 pt-2 border-t border-purple-200/60 flex items-center justify-between gap-2 text-xs">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-gray-600 font-medium">專屬驗證碼:</span>
-                              <span className="font-mono text-xs font-bold bg-white text-purple-900 px-2 py-0.5 rounded border border-purple-300 tracking-wider">
-                                {v.promoCode || "生成中..."}
-                              </span>
+                          <div className="mt-2 pt-2 border-t border-purple-200/60 space-y-2 text-xs">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] text-gray-600 font-medium">專屬驗證碼:</span>
+                                <span className="font-mono text-xs font-bold bg-white text-purple-900 px-2 py-0.5 rounded border border-purple-300 tracking-wider">
+                                  {v.promoCode || "生成中..."}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (v.promoCode) {
+                                      navigator.clipboard.writeText(v.promoCode);
+                                      alert(`驗證碼 ${v.promoCode} 已複製到剪貼簿！`);
+                                    }
+                                  }}
+                                  className="px-2 py-0.5 bg-purple-600 text-white rounded text-[10px] hover:bg-purple-700 font-medium cursor-pointer"
+                                >
+                                  複製代碼
+                                </button>
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (v.promoCode) {
-                                    navigator.clipboard.writeText(v.promoCode);
-                                    alert(`驗證碼 ${v.promoCode} 已複製到剪貼簿！`);
-                                  }
+                                  const updated = [...editingProduct.variants];
+                                  updated[index].promoCode = generatePromoCode();
+                                  setEditingProduct({ ...editingProduct, variants: updated });
                                 }}
-                                className="px-2 py-0.5 bg-purple-600 text-white rounded text-[10px] hover:bg-purple-700 font-medium cursor-pointer"
+                                className="text-[10px] text-purple-700 hover:underline cursor-pointer"
                               >
-                                複製代碼
+                                重新產生代碼
                               </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = [...editingProduct.variants];
-                                updated[index].promoCode = generatePromoCode();
-                                setEditingProduct({ ...editingProduct, variants: updated });
-                              }}
-                              className="text-[10px] text-purple-700 hover:underline cursor-pointer"
-                            >
-                              重新產生代碼
-                            </button>
+
+                            {/* 前台專屬直達連結 */}
+                            {editingProduct._id ? (
+                              <div className="bg-white/80 p-2 rounded border border-purple-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-1 text-[11px] text-purple-900 font-medium shrink-0">
+                                  <span>🔗</span>
+                                  <span>前台專屬直達連結:</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    value={buildPromoDirectUrl({
+                                      type: "product",
+                                      productId: String(editingProduct._id),
+                                      specName: v.name || "",
+                                      promoCode: v.promoCode || "",
+                                    })}
+                                    className="text-[11px] font-mono bg-gray-50 border border-purple-200 rounded px-2 py-0.5 text-gray-600 w-full truncate select-all focus:outline-none"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const url = buildPromoDirectUrl({
+                                        type: "product",
+                                        productId: String(editingProduct._id),
+                                        specName: v.name || "",
+                                        promoCode: v.promoCode || "",
+                                      });
+                                      navigator.clipboard.writeText(url);
+                                      alert(`專屬前台直達連結已複製！可直接張貼於 FB 社團：\n${url}`);
+                                    }}
+                                    className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[10px] font-medium shrink-0 cursor-pointer shadow-2xs"
+                                  >
+                                    複製直達連結
+                                  </button>
+                                  <a
+                                    href={buildPromoDirectUrl({
+                                      type: "product",
+                                      productId: String(editingProduct._id),
+                                      specName: v.name || "",
+                                      promoCode: v.promoCode || "",
+                                    })}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    title="前往前台預覽"
+                                    className="p-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-[10px] shrink-0"
+                                  >
+                                    預覽 ↗
+                                  </a>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-purple-600/80 italic">
+                                * 儲存商品後即可產生專屬前台直達連結
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>

@@ -17,6 +17,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { getImageUrl } from "@/lib/image";
+import { getFrontendBaseUrl, buildPromoDirectUrl } from "@/lib/utils";
 
 export interface SocialPromoItem {
   id: string;
@@ -71,6 +72,7 @@ export function SocialPromoManager({
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [baseUrl, setBaseUrl] = useState<string>(getFrontendBaseUrl());
 
   const fetchPromoItems = async () => {
     setIsLoading(true);
@@ -81,6 +83,9 @@ export function SocialPromoManager({
         setItems(data.items || []);
         if (data.stats) {
           setStats(data.stats);
+        }
+        if (data.baseUrl) {
+          setBaseUrl(data.baseUrl);
         }
       } else {
         console.error("載入社團特惠清單失敗:", data.message);
@@ -214,6 +219,12 @@ export function SocialPromoManager({
               集中檢視所有啟用「社團特惠長效保留」的常規商品規格與 Outlet
               特賣品。品項將保持保留狀態不受 20 分鐘過期機制影響，便於產生專屬網址並一鍵發布至社群平台！
             </p>
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/10 border border-white/20 text-xs text-stone-200">
+                <span className="text-purple-300 font-medium">前台分享基底網址：</span>
+                <span className="font-mono text-white font-semibold">{baseUrl}</span>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -515,48 +526,61 @@ export function SocialPromoManager({
 
                       {/* Direct Link & Copy */}
                       <td className="px-4 py-3.5">
-                        <div className="space-y-1.5 max-w-[280px]">
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="text"
-                              readOnly
-                              value={item.fullUrl}
-                              className="text-xs font-mono bg-gray-50 border border-gray-200 rounded px-2 py-1 text-gray-600 w-full truncate select-all focus:outline-none"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(item.fullUrl, linkCopyKey)}
-                              title="一鍵複製直達連結"
-                              className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium flex items-center gap-1 shrink-0 transition-colors shadow-2xs cursor-pointer"
-                            >
-                              {copiedKey === linkCopyKey ? (
-                                <>
-                                  <Check className="w-3 h-3 text-white" />
-                                  <span>已複製</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3 h-3" />
-                                  <span>複製</span>
-                                </>
+                        {(() => {
+                          const directLink =
+                            item.fullUrl ||
+                            buildPromoDirectUrl({
+                              type: item.type,
+                              slug: item.slug,
+                              productId: item.productId || item.sourceId,
+                              specName: item.variantName,
+                              promoCode: item.promoCode,
+                            });
+                          return (
+                            <div className="space-y-1.5 max-w-[280px]">
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="text"
+                                  readOnly
+                                  value={directLink}
+                                  className="text-xs font-mono bg-gray-50 border border-gray-200 rounded px-2 py-1 text-gray-600 w-full truncate select-all focus:outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(directLink, linkCopyKey)}
+                                  title="一鍵複製直達連結"
+                                  className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium flex items-center gap-1 shrink-0 transition-colors shadow-2xs cursor-pointer"
+                                >
+                                  {copiedKey === linkCopyKey ? (
+                                    <>
+                                      <Check className="w-3 h-3 text-white" />
+                                      <span>已複製</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3 h-3" />
+                                      <span>複製</span>
+                                    </>
+                                  )}
+                                </button>
+                                <a
+                                  href={directLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="新分頁預覽"
+                                  className="p-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded transition-colors shrink-0"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                              {copiedKey === linkCopyKey && (
+                                <span className="text-[10px] text-emerald-600 font-medium block">
+                                  ✓ 直達連結已複製！可直接張貼於社團貼文
+                                </span>
                               )}
-                            </button>
-                            <a
-                              href={item.fullUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="新分頁預覽"
-                              className="p-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded transition-colors shrink-0"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                          </div>
-                          {copiedKey === linkCopyKey && (
-                            <span className="text-[10px] text-emerald-600 font-medium block">
-                              ✓ 直達連結已複製！可直接張貼於社團貼文
-                            </span>
-                          )}
-                        </div>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Actions */}

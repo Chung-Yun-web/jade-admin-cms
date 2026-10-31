@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 import { auth, isUserAdmin } from "@/auth";
-import { generatePromoCode } from "@/lib/utils";
+import { generatePromoCode, getFrontendBaseUrl, buildPromoDirectUrl } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,13 +14,8 @@ export async function GET(req: NextRequest) {
     const client = await clientPromise;
     const db = client.db();
 
-    // Determine base URL for frontend direct links
-    const host = req.headers.get("host") || "localhost:3000";
-    const protocol = req.headers.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
-    const configuredBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
-    const baseUrl = configuredBaseUrl && configuredBaseUrl.startsWith("http")
-      ? configuredBaseUrl.replace(/\/$/, "")
-      : `${protocol}://${host}`;
+    // Determine frontend base URL for direct links (defaulting to https://jade-brand-site.vercel.app)
+    const baseUrl = getFrontendBaseUrl();
 
     // 1. Fetch products that have any variant with isSocialPromo === true
     const products = await db
@@ -43,6 +38,12 @@ export async function GET(req: NextRequest) {
           if (v.isSocialPromo) {
             const promo = v.promoCode || "";
             const directPath = `/product?id=${prod._id}&spec=${encodeURIComponent(v.name || "")}&promo=${encodeURIComponent(promo)}`;
+            const fullUrl = buildPromoDirectUrl({
+              type: "product",
+              productId: String(prod._id),
+              specName: v.name || "",
+              promoCode: promo,
+            });
             items.push({
               id: `${prod._id}_${vIdx}`,
               type: "product",
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
               isSocialPromo: true,
               promoCode: promo,
               directPath,
-              fullUrl: `${baseUrl}${directPath}`,
+              fullUrl,
               updatedAt: prod.updatedAt || prod.createdAt || new Date(),
             });
           }
@@ -70,6 +71,11 @@ export async function GET(req: NextRequest) {
     outlets.forEach((out: any) => {
       const promo = out.promoCode || "";
       const directPath = `/outlet?slug=${encodeURIComponent(out.slug || "")}&promo=${encodeURIComponent(promo)}`;
+      const fullUrl = buildPromoDirectUrl({
+        type: "outlet",
+        slug: out.slug || "",
+        promoCode: promo,
+      });
       items.push({
         id: String(out._id),
         type: "outlet",
@@ -84,7 +90,7 @@ export async function GET(req: NextRequest) {
         isSocialPromo: true,
         promoCode: promo,
         directPath,
-        fullUrl: `${baseUrl}${directPath}`,
+        fullUrl,
         updatedAt: out.updatedAt || out.createdAt || new Date(),
       });
     });
@@ -102,7 +108,7 @@ export async function GET(req: NextRequest) {
       availableCount: items.filter((i) => i.status === "available").length,
     };
 
-    return NextResponse.json({ success: true, items, stats });
+    return NextResponse.json({ success: true, baseUrl, items, stats });
   } catch (error: any) {
     console.error("GET social-promos error:", error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

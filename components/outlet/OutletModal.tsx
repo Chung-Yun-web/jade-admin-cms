@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { OutletItem, OutletStatus } from "@/types/outlet";
 import { getImageUrl } from "@/lib/image";
-import { generatePromoCode } from "@/lib/utils";
+import { generatePromoCode, buildPromoDirectUrl } from "@/lib/utils";
 
 
 interface OutletModalProps {
@@ -101,6 +101,7 @@ export const OutletModal: React.FC<OutletModalProps> = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [manualImageUrl, setManualImageUrl] = useState("");
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const handleToggleSocialPromo = (checked: boolean) => {
     if (checked) {
@@ -404,34 +405,92 @@ export const OutletModal: React.FC<OutletModalProps> = ({
                 </div>
 
                 {formData.isSocialPromo && (
-                  <div className="mt-3 pt-3 border-t border-purple-200/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white/80 p-3 rounded-lg border border-purple-100">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-gray-700">專屬驗證碼：</span>
-                      <span className="font-mono text-sm font-bold bg-purple-100 text-purple-900 px-2.5 py-1 rounded border border-purple-300 tracking-wider">
-                        {formData.promoCode || "生成中..."}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCopyCode}
-                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded transition-colors shadow-2xs"
-                      >
-                        {copiedCode ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedCode ? "已複製！" : "複製驗證碼"}</span>
-                      </button>
+                  <div className="mt-3 pt-3 border-t border-purple-200/70 space-y-2.5 bg-white/80 p-3 rounded-lg border border-purple-100">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-700">專屬驗證碼：</span>
+                        <span className="font-mono text-sm font-bold bg-purple-100 text-purple-900 px-2.5 py-1 rounded border border-purple-300 tracking-wider">
+                          {formData.promoCode || "生成中..."}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCopyCode}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded transition-colors shadow-2xs cursor-pointer"
+                        >
+                          {copiedCode ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedCode ? "已複製！" : "複製驗證碼"}</span>
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newCode = generatePromoCode();
+                            setFormData((prev) => ({ ...prev, promoCode: newCode }));
+                          }}
+                          className="inline-flex items-center gap-1 text-xs text-purple-700 hover:text-purple-900 hover:underline cursor-pointer"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>重新產生代碼</span>
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newCode = generatePromoCode();
-                          setFormData((prev) => ({ ...prev, promoCode: newCode }));
-                        }}
-                        className="inline-flex items-center gap-1 text-xs text-purple-700 hover:text-purple-900 hover:underline"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        <span>重新產生代碼</span>
-                      </button>
-                    </div>
+
+                    {/* 前台專屬直達連結 */}
+                    {formData.slug ? (
+                      <div className="pt-2 border-t border-purple-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-1 text-xs text-purple-900 font-semibold shrink-0">
+                          <span>🔗</span>
+                          <span>前台專屬直達連結:</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          <input
+                            type="text"
+                            readOnly
+                            value={buildPromoDirectUrl({
+                              type: "outlet",
+                              slug: formData.slug,
+                              promoCode: formData.promoCode,
+                            })}
+                            className="text-xs font-mono bg-purple-50/60 border border-purple-200 rounded px-2.5 py-1 text-gray-700 w-full truncate select-all focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const directUrl = buildPromoDirectUrl({
+                                type: "outlet",
+                                slug: formData.slug,
+                                promoCode: formData.promoCode,
+                              });
+                              navigator.clipboard.writeText(directUrl);
+                              setCopiedLink(true);
+                              setTimeout(() => setCopiedLink(false), 2000);
+                            }}
+                            className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded transition-colors shadow-2xs shrink-0 cursor-pointer"
+                          >
+                            {copiedLink ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedLink ? "已複製！" : "複製直達連結"}</span>
+                          </button>
+                          <a
+                            href={buildPromoDirectUrl({
+                              type: "outlet",
+                              slug: formData.slug,
+                              promoCode: formData.promoCode,
+                            })}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="前往前台預覽"
+                            className="p-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs shrink-0"
+                          >
+                            預覽 ↗
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-purple-600/80 italic pt-1">
+                        * 請填寫 Slug 代碼以自動生成專屬前台直達連結
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
