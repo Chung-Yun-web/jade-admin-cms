@@ -16,6 +16,7 @@ export interface IVariant {
   reservedUntil: Date | null;
   isSocialPromo?: boolean;
   promoCode?: string;
+  dimensions?: string;
 }
 
 export interface IProduct extends Document {
@@ -52,6 +53,7 @@ const VariantSchema = new Schema<IVariant>({
   custom_notice: { type: String, default: "" },
   ready_made_note: { type: String, default: "" },
   lead_time_days: { type: Number, default: 10 },
+  dimensions: { type: String, default: "", trim: true },
   status: { type: String, default: "available" },
   reservedUntil: { type: Date, default: null },
   isSocialPromo: { type: Boolean, default: false },

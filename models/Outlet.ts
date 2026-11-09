@@ -7,6 +7,7 @@ export interface IOutlet extends Document {
   originalPrice?: number;
   images: string[];
   material?: string;
+  dimensions?: string;
   sourceNote?: string;
   description?: string;
   status: "available" | "reserved" | "sold" | "archived";
@@ -48,6 +49,11 @@ const OutletSchema = new Schema<IOutlet>(
       default: [],
     },
     material: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    dimensions: {
       type: String,
       default: "",
       trim: true,

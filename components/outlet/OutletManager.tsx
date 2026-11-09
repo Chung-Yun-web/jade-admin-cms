@@ -171,11 +171,19 @@ const SortableOutletRow: React.FC<SortableOutletRowProps> = ({
         </div>
       </td>
 
-      {/* Material */}
-      <td className="px-4 py-4 text-xs text-gray-600 max-w-[180px] hidden md:table-cell">
-        <span className="line-clamp-2" title={item.material || "-"}>
-          {item.material || "-"}
-        </span>
+      {/* Material & Dimensions */}
+      <td className="px-4 py-4 text-xs text-gray-600 max-w-[200px] hidden md:table-cell">
+        <div className="space-y-1">
+          <p className="line-clamp-2" title={item.material || "-"}>
+            {item.material || "-"}
+          </p>
+          {item.dimensions && (
+            <p className="text-[11px] text-gray-500 font-mono line-clamp-1 flex items-center gap-1" title={item.dimensions}>
+              <span>📏</span>
+              <span>{item.dimensions}</span>
+            </p>
+          )}
+        </div>
       </td>
 
       {/* Pricing */}
@@ -350,8 +358,9 @@ export const OutletManager: React.FC = () => {
         const matchesTitle = item.title?.toLowerCase().includes(q);
         const matchesSlug = item.slug?.toLowerCase().includes(q);
         const matchesMaterial = item.material?.toLowerCase().includes(q);
+        const matchesDimensions = item.dimensions?.toLowerCase().includes(q);
         const matchesSource = item.sourceNote?.toLowerCase().includes(q);
-        return matchesTitle || matchesSlug || matchesMaterial || matchesSource;
+        return matchesTitle || matchesSlug || matchesMaterial || matchesDimensions || matchesSource;
       }
 
       return true;

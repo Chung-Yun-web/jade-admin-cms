@@ -528,6 +528,7 @@ export default function AdminDashboard() {
             image: v.image || "",
             images: Array.isArray(v.images) ? v.images.filter(Boolean) : (v.image ? [v.image] : []),
             status,
+            dimensions: (v.dimensions || "").trim(),
             type: v.type || "ready_made",
             sort_order: v.sort_order === undefined ? idx : Number(v.sort_order),
             custom_notice: v.custom_notice || "",
@@ -1660,6 +1661,7 @@ export default function AdminDashboard() {
                         {
                           name: "",
                           price: 0,
+                          dimensions: "",
                           image: "",
                           images: [],
                           type: "ready_made",
@@ -1741,6 +1743,25 @@ export default function AdminDashboard() {
                             <option value="archived">archived（封存）</option>
                           </select>
                         </div>
+                      </div>
+
+                      {/* 📏 商品規格文字描述 */}
+                      <div>
+                        <label className="block text-[10px] text-gray-500 font-semibold mb-1 flex items-center gap-1">
+                          <span>📏 商品規格</span>
+                          <span className="text-[10px] text-gray-400 font-normal">（如主石尺寸、戒圍、鍊長等文字描述，選填）</span>
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={v.dimensions || ""}
+                          onChange={(e) => {
+                            const updated = [...editingProduct.variants];
+                            updated[index].dimensions = e.target.value;
+                            setEditingProduct({ ...editingProduct, variants: updated });
+                          }}
+                          placeholder="例如：主石尺寸：約 24.5 x 18.2 x 8.1 mm / 鍊長：約 45 cm"
+                          className="w-full text-xs border p-1.5 rounded bg-white focus:ring-1 focus:ring-indigo-500 outline-none text-gray-800 resize-y"
+                        />
                       </div>
 
                       {/* 社團特惠長效保留開關 */}

@@ -11,6 +11,7 @@ export interface ProductVariant {
   lead_time_days?: number;
   isSocialPromo?: boolean;
   promoCode?: string;
+  dimensions?: string; // 規格尺寸與長度文字描述 (例如: 主石尺寸：約 24.5 x 18.2 x 8.1 mm / 鍊長：約 45 cm)
 }
 
 

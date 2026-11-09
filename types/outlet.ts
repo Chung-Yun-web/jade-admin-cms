@@ -8,6 +8,7 @@ export interface OutletItem {
   originalPrice?: number;
   images: string[];
   material?: string;
+  dimensions?: string;
   sourceNote?: string;
   description?: string;
   status: OutletStatus;

@@ -70,6 +70,7 @@ export const OutletModal: React.FC<OutletModalProps> = ({
         originalPrice: outlet.originalPrice,
         images: Array.isArray(outlet.images) ? [...outlet.images] : [],
         material: outlet.material || "",
+        dimensions: outlet.dimensions || "",
         sourceNote: outlet.sourceNote || "",
         description: outlet.description || "",
         status: outlet.status || "available",
@@ -86,6 +87,7 @@ export const OutletModal: React.FC<OutletModalProps> = ({
       originalPrice: undefined,
       images: [],
       material: "",
+      dimensions: "",
       sourceNote: "",
       description: "",
       status: "available",
@@ -763,6 +765,21 @@ export const OutletModal: React.FC<OutletModalProps> = ({
                   onChange={(e) => setFormData({ ...formData, material: e.target.value })}
                   placeholder="例：老坑冰種隨形翡翠、925銀鍍黑金手工包鑲"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                />
+              </div>
+
+              {/* Dimensions */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                  <span>📏 商品規格</span>
+                  <span className="text-[11px] text-gray-400 font-normal">（尺寸與長度文字描述，選填）</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={formData.dimensions || ""}
+                  onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
+                  placeholder="例：主石尺寸：約 24.5 x 18.2 x 8.1 mm / 鍊長：約 45 cm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white resize-y"
                 />
               </div>
 
