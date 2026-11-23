@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Send,
   Check,
+  Save,
   Loader2
 } from "lucide-react";
 import { Order } from "@/types/order";
@@ -26,6 +27,7 @@ interface OrderListProps {
   onPrintOrder: (order: Order, type?: "INSURED_HOME" | "CVS_STORE") => void;
   onToggleStatus: (order: Order) => Promise<void>;
   onUpdateTrace: (orderNumber: string, trace: string) => Promise<boolean>;
+  onUpdateStatus?: (orderNumber: string, status: string) => Promise<boolean>;
   isLoading: boolean;
 }
 
@@ -39,11 +41,16 @@ export const OrderList: React.FC<OrderListProps> = ({
   onPrintOrder,
   onToggleStatus,
   onUpdateTrace,
+  onUpdateStatus,
   isLoading,
 }) => {
   const [traceInputs, setTraceInputs] = useState<Record<string, string>>({});
   const [savingTrace, setSavingTrace] = useState<Record<string, boolean>>({});
   const [savedTraceFeedback, setSavedTraceFeedback] = useState<Record<string, boolean>>({});
+
+  const [statusInputs, setStatusInputs] = useState<Record<string, string>>({});
+  const [savingStatus, setSavingStatus] = useState<Record<string, boolean>>({});
+  const [savedStatusFeedback, setSavedStatusFeedback] = useState<Record<string, boolean>>({});
 
   const handleTraceChange = (orderNumber: string, value: string) => {
     setTraceInputs((prev) => ({
@@ -68,33 +75,87 @@ export const OrderList: React.FC<OrderListProps> = ({
     }
   };
 
+  const handleStatusChange = (orderNumber: string, value: string) => {
+    setStatusInputs((prev) => ({
+      ...prev,
+      [orderNumber]: value,
+    }));
+  };
+
+  const handleSaveStatus = async (orderNumber: string) => {
+    if (!onUpdateStatus) return;
+    const value = statusInputs[orderNumber] !== undefined ? statusInputs[orderNumber] : "";
+    setSavingStatus((prev) => ({ ...prev, [orderNumber]: true }));
+    try {
+      const ok = await onUpdateStatus(orderNumber, value);
+      if (ok) {
+        setSavedStatusFeedback((prev) => ({ ...prev, [orderNumber]: true }));
+        setTimeout(() => {
+          setSavedStatusFeedback((prev) => ({ ...prev, [orderNumber]: false }));
+        }, 2500);
+      }
+    } finally {
+      setSavingStatus((prev) => ({ ...prev, [orderNumber]: false }));
+    }
+  };
+
   const getLogisticsBadge = (order: Order) => {
     const isCvs = order.shippingInfo?.method === "CVS_STORE" || Boolean(order.shippingInfo?.storeId);
     const isInsured = order.shippingInfo?.method === "INSURED_HOME";
+    const ecpayStatus = order.shippingInfo?.rtnMsg;
 
     if (isCvs) {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-          <Store className="w-3 h-3 text-purple-600" />
-          <span>超商純取貨</span>
-        </span>
+        <div className="flex flex-col gap-1 items-start">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+            <Store className="w-3 h-3 text-purple-600" />
+            <span>超商純取貨</span>
+          </span>
+          {ecpayStatus ? (
+            <span
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"
+              title={`綠界貨態代碼: ${order.shippingInfo?.rtnCode || ""}`}
+            >
+              綠界: {ecpayStatus}
+            </span>
+          ) : order.shippingInfo?.cvsPaymentNo ? (
+            <span className="text-[10px] text-gray-500 font-mono">
+              交寄碼: {order.shippingInfo.cvsPaymentNo}
+            </span>
+          ) : null}
+        </div>
       );
     }
 
     if (isInsured) {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-          <ShieldCheck className="w-3 h-3 text-amber-600" />
-          <span>尊榮保價宅配</span>
-        </span>
+        <div className="flex flex-col gap-1 items-start">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+            <ShieldCheck className="w-3 h-3 text-amber-600" />
+            <span>尊榮保價宅配</span>
+          </span>
+          {order.status && (
+            <span
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50/90 text-amber-800 border border-amber-200 truncate max-w-[140px]"
+              title={order.status}
+            >
+              {order.status}
+            </span>
+          )}
+        </div>
       );
     }
 
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-        <Truck className="w-3 h-3 text-blue-600" />
-        <span>一般宅配</span>
-      </span>
+      <div className="flex flex-col gap-1 items-start">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+          <Truck className="w-3 h-3 text-blue-600" />
+          <span>一般宅配</span>
+        </span>
+        {order.status && (
+          <span className="text-[10px] text-gray-500">{order.status}</span>
+        )}
+      </div>
     );
   };
 
@@ -189,7 +250,7 @@ export const OrderList: React.FC<OrderListProps> = ({
               <th className="py-3 px-4 text-right">訂單保價總額</th>
               <th className="py-3 px-4 text-center">出貨狀態</th>
               {currentTab === "SHIPPED" && (
-                <th className="py-3 px-4 min-w-[210px]">物流追蹤單號 (Trace)</th>
+                <th className="py-3 px-4 min-w-[240px]">物流追蹤單號 / 貨態管理</th>
               )}
               <th className="py-3 px-4 text-center">出貨操作</th>
             </tr>
@@ -292,53 +353,102 @@ export const OrderList: React.FC<OrderListProps> = ({
                       </div>
                     </td>
 
-                    {/* 出貨狀態 */}
+                    {/* 出貨狀態與即時貨態 */}
                     <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                      {isShipped ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> 已出貨
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
-                          待出貨
-                        </span>
-                      )}
+                      <div className="flex flex-col items-center gap-1">
+                        {isShipped ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> 已出貨
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                            待出貨
+                          </span>
+                        )}
+                        {order.status && (
+                          <span
+                            className="text-[10px] text-gray-500 font-medium truncate max-w-[130px]"
+                            title={order.status}
+                          >
+                            {order.status}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
-                    {/* 物流追蹤單號輸入框 (已出貨分頁專屬) */}
+                    {/* 物流追蹤單號與貨態管理 (已出貨分頁專屬) */}
                     {currentTab === "SHIPPED" && (
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            placeholder="鍵入物流追蹤單號..."
-                            value={currentTrace}
-                            onChange={(e) => handleTraceChange(order.orderNumber, e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleSaveTrace(order.orderNumber);
-                            }}
-                            className="bg-white border border-gray-300 rounded px-2.5 py-1 text-xs text-gray-900 font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-36 sm:w-40"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSaveTrace(order.orderNumber)}
-                            disabled={isSaving}
-                            className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all shadow-xs ${
-                              isSaved
-                                ? "bg-emerald-600 text-white"
-                                : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
-                            }`}
-                            title="儲存物流單號至 MongoDB"
-                          >
-                            {isSaving ? (
-                              <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />
-                            ) : isSaved ? (
-                              <Check className="w-3 h-3 text-white" />
-                            ) : (
-                              <Send className="w-3 h-3 text-indigo-600" />
-                            )}
-                            <span>{isSaved ? "已存" : "儲存"}</span>
-                          </button>
+                        <div className="flex flex-col gap-1.5">
+                          {/* 物流單號 */}
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              placeholder="鍵入單號 (Trace)..."
+                              value={currentTrace}
+                              onChange={(e) => handleTraceChange(order.orderNumber, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveTrace(order.orderNumber);
+                              }}
+                              className="bg-white border border-gray-300 rounded px-2.5 py-1 text-xs text-gray-900 font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-36 sm:w-40"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveTrace(order.orderNumber)}
+                              disabled={isSaving}
+                              className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all shadow-xs ${
+                                isSaved
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
+                              }`}
+                              title="儲存物流單號至 MongoDB"
+                            >
+                              {isSaving ? (
+                                <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />
+                              ) : isSaved ? (
+                                <Check className="w-3 h-3 text-white" />
+                              ) : (
+                                <Send className="w-3 h-3 text-indigo-600" />
+                              )}
+                              <span>{isSaved ? "已存" : "存單號"}</span>
+                            </button>
+                          </div>
+
+                          {/* 保值郵寄手動貨態維護輸入框 */}
+                          {!isCvs && onUpdateStatus && (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="text"
+                                placeholder="自訂貨態 (例: 保價專人親簽中)..."
+                                value={statusInputs[order.orderNumber] !== undefined ? statusInputs[order.orderNumber] : (order.status || "")}
+                                onChange={(e) => handleStatusChange(order.orderNumber, e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSaveStatus(order.orderNumber);
+                                }}
+                                className="bg-amber-50/40 border border-amber-300 rounded px-2 py-0.5 text-xs text-amber-900 placeholder:text-amber-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 w-36 sm:w-40"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSaveStatus(order.orderNumber)}
+                                disabled={savingStatus[order.orderNumber]}
+                                className={`px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 transition-all shadow-xs ${
+                                  savedStatusFeedback[order.orderNumber]
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300"
+                                }`}
+                                title="儲存保值郵寄貨態文字"
+                              >
+                                {savingStatus[order.orderNumber] ? (
+                                  <Loader2 className="w-3 h-3 animate-spin text-amber-700" />
+                                ) : savedStatusFeedback[order.orderNumber] ? (
+                                  <Check className="w-3 h-3 text-white" />
+                                ) : (
+                                  <Save className="w-3 h-3 text-amber-700" />
+                                )}
+                                <span>{savedStatusFeedback[order.orderNumber] ? "已存" : "存貨態"}</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     )}

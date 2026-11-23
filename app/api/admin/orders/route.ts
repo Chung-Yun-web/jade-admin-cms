@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 import { auth, isUserAdmin } from "@/auth";
 import { Order, OrderStatsData } from "@/types/order";
+import { sendShippingStatusEmail } from "@/lib/email";
 
 export const revalidate = 0;
 
@@ -50,6 +51,13 @@ export async function GET(req: NextRequest) {
         storeId: rawDoc.shippingInfo?.storeId || "",
         storeName: rawDoc.shippingInfo?.storeName || "",
         storeAddress: rawDoc.shippingInfo?.storeAddress || "",
+        subType: rawDoc.shippingInfo?.subType || "",
+        allPayLogisticsId: rawDoc.shippingInfo?.allPayLogisticsId || "",
+        rtnCode: rawDoc.shippingInfo?.rtnCode || "",
+        rtnMsg: rawDoc.shippingInfo?.rtnMsg || "",
+        cvsPaymentNo: rawDoc.shippingInfo?.cvsPaymentNo || "",
+        cvsValidationNo: rawDoc.shippingInfo?.cvsValidationNo || "",
+        updateStatusDate: rawDoc.shippingInfo?.updateStatusDate || "",
       };
 
       const shippingFee = rawDoc.amountInfo?.shippingFee ?? (normalizedShippingInfo.method === "CVS_STORE" ? 60 : 100);
@@ -95,6 +103,7 @@ export async function GET(req: NextRequest) {
           tradeNo: rawDoc.paymentInfo?.tradeNo || rawDoc.paymentIntentId || "",
         },
         shippingStatus: shippingStatus,
+        status: rawDoc.status || "",
         trace: rawDoc.trace || "",
         shippedAt: rawDoc.shippedAt ? new Date(rawDoc.shippedAt).toISOString() : null,
         createdAt: rawDoc.createdAt ? new Date(rawDoc.createdAt).toISOString() : new Date().toISOString(),
@@ -148,7 +157,9 @@ export async function GET(req: NextRequest) {
           (o.shippingInfo?.storeName && o.shippingInfo.storeName.toLowerCase().includes(q)) ||
           (o.shippingInfo?.storeId && o.shippingInfo.storeId.toLowerCase().includes(q)) ||
           (o.shippingInfo?.address && o.shippingInfo.address.toLowerCase().includes(q)) ||
-          (o.trace && o.trace.toLowerCase().includes(q))
+          (o.trace && o.trace.toLowerCase().includes(q)) ||
+          (o.status && o.status.toLowerCase().includes(q)) ||
+          (o.shippingInfo?.rtnMsg && o.shippingInfo.rtnMsg.toLowerCase().includes(q))
         );
       });
     }
@@ -172,7 +183,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { orderNumber, shippingStatus, trace } = body;
+    const { orderNumber, shippingStatus, trace, status } = body;
 
     if (!orderNumber) {
       return NextResponse.json({ success: false, message: "缺少訂單編號 (orderNumber)" }, { status: 400 });
@@ -201,6 +212,11 @@ export async function PATCH(req: NextRequest) {
     // 2. 更新物流追蹤單號
     if (trace !== undefined) {
       updateFields.trace = String(trace).trim();
+    }
+
+    // 3. 更新即時貨態文字 (尤其適用於保值郵寄或自訂貨態)
+    if (status !== undefined) {
+      updateFields.status = String(status).trim();
     }
 
     const result = await db.collection("orders").updateOne(
@@ -261,6 +277,20 @@ export async function PATCH(req: NextRequest) {
         }
       } catch (linkErr) {
         console.warn("[MongoDB] Warning: Failed to link order items to product sold status:", linkErr);
+      }
+    }
+
+    // 4. 出貨貨態變更自動寄信通知 (含訪客防呆，不中斷管理員流程)
+    if (shippingStatus !== undefined || status !== undefined || trace !== undefined) {
+      try {
+        const orderForEmail = await db.collection("orders").findOne({ orderNumber });
+        if (orderForEmail) {
+          sendShippingStatusEmail(orderForEmail as any, status || updateFields.status).catch((emailErr) => {
+            console.error("[PATCH orders] 發送貨態更新信件失敗 (不中斷管理員流程):", emailErr);
+          });
+        }
+      } catch (findErr) {
+        console.warn("[PATCH orders] 查詢訂單以發送貨態信件失敗:", findErr);
       }
     }
 

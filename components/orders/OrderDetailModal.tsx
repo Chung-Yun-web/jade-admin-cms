@@ -22,6 +22,7 @@ interface OrderDetailModalProps {
   onPrint: (order: Order, type: "INSURED_HOME" | "CVS_STORE") => void;
   onToggleStatus: (order: Order) => Promise<void>;
   onUpdateTrace: (orderNumber: string, trace: string) => Promise<boolean>;
+  onUpdateStatus?: (orderNumber: string, status: string) => Promise<boolean>;
 }
 
 export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
@@ -30,18 +31,39 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   onPrint,
   onToggleStatus,
   onUpdateTrace,
+  onUpdateStatus,
 }) => {
   const [traceValue, setTraceValue] = useState<string>("");
   const [isSavingTrace, setIsSavingTrace] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState<boolean>(false);
 
+  const [statusValue, setStatusValue] = useState<string>("");
+  const [isSavingStatus, setIsSavingStatus] = useState<boolean>(false);
+  const [isStatusSaved, setIsStatusSaved] = useState<boolean>(false);
+
   useEffect(() => {
     if (order) {
       setTraceValue(order.trace || "");
       setIsSaved(false);
+      setStatusValue(order.status || "");
+      setIsStatusSaved(false);
     }
   }, [order]);
+
+  const handleSaveStatus = async () => {
+    if (!onUpdateStatus || !order) return;
+    setIsSavingStatus(true);
+    try {
+      const ok = await onUpdateStatus(order.orderNumber, statusValue);
+      if (ok) {
+        setIsStatusSaved(true);
+        setTimeout(() => setIsStatusSaved(false), 2500);
+      }
+    } finally {
+      setIsSavingStatus(false);
+    }
+  };
 
   if (!order) return null;
 
@@ -300,6 +322,123 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               儲存後顧客可於前台查詢該訂單即時包裹動態。
             </p>
           </div>
+
+          {/* 綠界超商物流即時貨態卡片 (僅超商取貨訂單顯示) */}
+          {isCvs && (
+            <div className="border border-purple-200 bg-purple-50/40 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-purple-900 font-bold text-xs">
+                  <Store className="w-4 h-4 text-purple-600" />
+                  <span>綠界科技超商物流狀態 (ECPay CVS Logistics)</span>
+                </div>
+                <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-mono font-medium">
+                  {order.shippingInfo?.subType || "CVS"}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                <div className="bg-white p-3 rounded-lg border border-purple-100">
+                  <span className="text-gray-400 block text-[11px] mb-0.5">最新物流貨態說明</span>
+                  <span className="font-bold text-purple-900 text-sm">
+                    {order.shippingInfo?.rtnMsg || order.status || "待交寄 / 訂單處理中"}
+                  </span>
+                  {order.shippingInfo?.rtnCode && (
+                    <span className="text-[10px] text-gray-400 block mt-1 font-mono">
+                      代碼: {order.shippingInfo.rtnCode}
+                    </span>
+                  )}
+                </div>
+                <div className="bg-white p-3 rounded-lg border border-purple-100">
+                  <span className="text-gray-400 block text-[11px] mb-0.5">超商寄件代碼 (CVSPaymentNo)</span>
+                  <span className="font-bold font-mono text-gray-800 text-sm">
+                    {order.shippingInfo?.cvsPaymentNo || order.trace || "尚未產生寄件碼"}
+                  </span>
+                </div>
+                <div className="bg-white p-3 rounded-lg border border-purple-100">
+                  <span className="text-gray-400 block text-[11px] mb-0.5">綠界物流編號 (AllPayLogisticsID)</span>
+                  <span className="font-mono text-gray-700">
+                    {order.shippingInfo?.allPayLogisticsId || "尚無編號"}
+                  </span>
+                </div>
+                <div className="bg-white p-3 rounded-lg border border-purple-100">
+                  <span className="text-gray-400 block text-[11px] mb-0.5">貨態更新時間 (UpdateStatusDate)</span>
+                  <span className="font-mono text-gray-700">
+                    {order.shippingInfo?.updateStatusDate || "無"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 保值郵寄手動貨態維護管理區 (非超商/保值郵寄訂單專屬) */}
+          {!isCvs && onUpdateStatus && (
+            <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                  <span>保值郵寄 · 即時貨態文字管理</span>
+                </label>
+                <span className="text-[10px] text-amber-800 bg-amber-100/90 border border-amber-200 px-2 py-0.5 rounded font-medium">
+                  前台即時同步
+                </span>
+              </div>
+
+              {/* 快捷常見狀態預設標籤 */}
+              <div>
+                <span className="text-[11px] text-gray-500 block mb-1">快速套用常用貨態範本：</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    "商品品檢完成，安排專人寄出",
+                    "已寄出，專人親交簽收中",
+                    "保價郵件運送中，預計明日抵達",
+                    "包裹配送中，請保持電話暢通",
+                    "已全額保價親簽完成收件",
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setStatusValue(preset)}
+                      className="text-[11px] px-2.5 py-1 bg-white hover:bg-amber-100/80 border border-amber-200 text-amber-900 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 貨態輸入與儲存按鈕 */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={statusValue}
+                  onChange={(e) => setStatusValue(e.target.value)}
+                  placeholder="請輸入即時貨態文字 (例: 已寄出，郵局快捷專人親交簽收中)..."
+                  className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveStatus}
+                  disabled={isSavingStatus}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs ${
+                    isStatusSaved
+                      ? "bg-emerald-600 text-white"
+                      : "bg-amber-600 hover:bg-amber-700 text-white"
+                  }`}
+                >
+                  {isSavingStatus ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : isStatusSaved ? (
+                    <Check className="w-3.5 h-3.5" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isStatusSaved ? "已更新貨態" : "儲存貨態"}</span>
+                </button>
+              </div>
+              <p className="text-[11px] text-amber-800/80">
+                儲存後將即時寫入資料庫並同步於前台查單端點，且自動發送「貨態變更通知信」給顧客。
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer 操作列 */}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
+import { sendOrderConfirmationEmail } from "@/lib/email";
 
 // 產生隨機英數字
 function generateRandomAlphanumeric(length: number): string {
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!customerInfo || !customerInfo.name || !customerInfo.phone || !customerInfo.shippingAddress || !customerInfo.email) {
+    if (!customerInfo || !customerInfo.name || !customerInfo.phone || !customerInfo.shippingAddress || (!customerInfo.email && !isGuest)) {
       return NextResponse.json(
         { error: "請提供完整收件者聯絡資訊" },
         { status: 400 }
@@ -292,7 +293,7 @@ export async function POST(req: NextRequest) {
       createdAt: new Date(),
       customerInfo: {
         name: customerInfo.name,
-        email: customerInfo.email,
+        email: customerInfo.email || "",
         phone: customerInfo.phone,
         shippingAddress: customerInfo.shippingAddress,
       },
@@ -304,6 +305,11 @@ export async function POST(req: NextRequest) {
     };
 
     await db.collection("orders").insertOne(orderDoc);
+
+    // 非同步安全寄送訂單成立通知信 (含訪客防呆，不中斷下單流程)
+    sendOrderConfirmationEmail(orderDoc as any).catch((emailErr) => {
+      console.error("[Checkout] 寄送訂單成立通知信時發生錯誤 (不中斷流程):", emailErr);
+    });
 
     // 6. 封裝綠界必要的 POST 參數 (全部必須是字串格式以利後續排序與簽章)
     const params: Record<string, string> = {

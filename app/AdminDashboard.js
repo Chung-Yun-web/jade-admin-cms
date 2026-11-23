@@ -305,6 +305,33 @@ export default function AdminDashboard() {
     return false;
   };
 
+  const handleUpdateOrderStatusText = async (orderNumber, status) => {
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber, status }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchOrders(ordersTab, ordersSearch);
+        if (detailOrder && detailOrder.orderNumber === orderNumber) {
+          setDetailOrder({
+            ...detailOrder,
+            status: status,
+          });
+        }
+        return true;
+      } else {
+        alert(`儲存貨態文字失敗: ${data.message}`);
+      }
+    } catch (err) {
+      console.error("儲存貨態文字出錯:", err);
+      alert("儲存貨態文字時發生錯誤！");
+    }
+    return false;
+  };
+
   const handleOpenPrint = (order, type) => {
     const isCvs = order.shippingInfo?.method === "CVS_STORE" || Boolean(order.shippingInfo?.storeId);
     const targetType = type || (isCvs ? "CVS_STORE" : "INSURED_HOME");
@@ -1093,6 +1120,7 @@ export default function AdminDashboard() {
               onPrintOrder={(order, type) => handleOpenPrint(order, type)}
               onToggleStatus={handleToggleOrderStatus}
               onUpdateTrace={handleUpdateOrderTrace}
+              onUpdateStatus={handleUpdateOrderStatusText}
               isLoading={isOrdersLoading}
             />
           </div>
@@ -1444,6 +1472,7 @@ export default function AdminDashboard() {
           }}
           onToggleStatus={handleToggleOrderStatus}
           onUpdateTrace={handleUpdateOrderTrace}
+          onUpdateStatus={handleUpdateOrderStatusText}
         />
       )}
 

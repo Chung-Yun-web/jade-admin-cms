@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import clientPromise from '../../../../lib/mongodb';
+import { sendOrderConfirmationEmail } from '@/lib/email';
 
 // 綠界特有的 URL 編碼規則
 function ecpayUrlEncode(str: string): string {
@@ -93,6 +94,18 @@ export async function POST(req: NextRequest) {
       );
 
       console.log(`Successfully processed ECPay callback for order ${MerchantTradeNo}. DB update result:`, result);
+
+      // 非同步發送付款完成確認信 (含訪客防呆，不中斷回呼)
+      try {
+        const paidOrder = await db.collection('orders').findOne({ orderNumber: MerchantTradeNo });
+        if (paidOrder) {
+          sendOrderConfirmationEmail(paidOrder as any).catch((mailErr) => {
+            console.error(`[ECPay Payment Callback] 付款完成寄信失敗 (訂單: ${MerchantTradeNo}):`, mailErr);
+          });
+        }
+      } catch (findErr) {
+        console.warn(`[ECPay Payment Callback] 查詢已付款訂單發信失敗:`, findErr);
+      }
     } else {
       console.log(`ECPay callback received for order ${MerchantTradeNo} but payment failed or pending. RtnCode: ${RtnCode}`);
     }

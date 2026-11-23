@@ -29,6 +29,13 @@ export interface ShippingInfo {
   storeId?: string;
   storeName?: string;
   storeAddress?: string;
+  subType?: string;
+  allPayLogisticsId?: string;
+  rtnCode?: string | number;
+  rtnMsg?: string;
+  cvsPaymentNo?: string;
+  cvsValidationNo?: string;
+  updateStatusDate?: string;
 }
 
 export interface PaymentInfo {
@@ -49,7 +56,9 @@ export interface Order {
   amountInfo?: AmountInfo;
   shippingInfo?: ShippingInfo;
   paymentInfo?: PaymentInfo;
+  paymentIntentId?: string;
   shippingStatus?: 'UNSHIPPED' | 'SHIPPED' | 'CANCELLED' | string;
+  status?: string;
   trace?: string | null;
   shippedAt?: string | Date | null;
   createdAt: string | Date;

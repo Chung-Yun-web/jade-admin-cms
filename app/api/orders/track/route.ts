@@ -40,10 +40,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Determine safe shipment/payment status
-    // Use order.status if it exists, otherwise fall back to paymentStatus based status mappings
+    // Use order.status if it exists, otherwise fall back to shippingStatus / paymentStatus based status mappings
     let currentStatus = order.status;
     if (!currentStatus) {
-      if (order.paymentStatus === "paid") {
+      if (order.shippingStatus === "SHIPPED") {
+        currentStatus = "已完成出貨，配送運送中";
+      } else if (order.paymentStatus === "paid") {
         currentStatus = "已付款，商品製作中";
       } else if (order.paymentStatus === "pending") {
         currentStatus = "訂單成立，待付款";
@@ -56,6 +58,8 @@ export async function POST(req: NextRequest) {
     const safeResponse = {
       orderNumber: order.orderNumber,
       status: currentStatus,
+      trace: order.trace || order.shippingInfo?.cvsPaymentNo || null,
+      shippingMethod: order.shippingInfo?.methodName || (order.shippingInfo?.method === "CVS_STORE" ? "超商純取貨" : "保值郵寄"),
       updatedAt: order.updatedAt || order.createdAt || new Date(),
       items: safeItems,
     };
