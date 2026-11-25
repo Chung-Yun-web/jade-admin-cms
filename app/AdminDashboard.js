@@ -332,6 +332,27 @@ export default function AdminDashboard() {
     return false;
   };
 
+  const handleResendShippingEmail = async (order) => {
+    try {
+      const res = await fetch("/api/admin/orders/resend-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber: order.orderNumber }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || `訂單 ${order.orderNumber} 貨態通知信已重新發送！`);
+        return !data.skipped;
+      } else {
+        alert(data.message || "重寄貨態通知信失敗！");
+      }
+    } catch (err) {
+      console.error("重寄貨態通知信出錯:", err);
+      alert("重寄貨態通知信時發生錯誤！");
+    }
+    return false;
+  };
+
   const handleOpenPrint = (order, type) => {
     const isCvs = order.shippingInfo?.method === "CVS_STORE" || Boolean(order.shippingInfo?.storeId);
     const targetType = type || (isCvs ? "CVS_STORE" : "INSURED_HOME");
@@ -1121,6 +1142,7 @@ export default function AdminDashboard() {
               onToggleStatus={handleToggleOrderStatus}
               onUpdateTrace={handleUpdateOrderTrace}
               onUpdateStatus={handleUpdateOrderStatusText}
+              onResendEmail={handleResendShippingEmail}
               isLoading={isOrdersLoading}
             />
           </div>
@@ -1473,6 +1495,7 @@ export default function AdminDashboard() {
           onToggleStatus={handleToggleOrderStatus}
           onUpdateTrace={handleUpdateOrderTrace}
           onUpdateStatus={handleUpdateOrderStatusText}
+          onResendEmail={handleResendShippingEmail}
         />
       )}
 

@@ -228,7 +228,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 7. 自動發送貨態變更通知信 (非同步安全執行，含訪客防呆)
+    // 7. 自動發送貨態變更通知信 (使用 await 避免 Vercel Serverless 提早中斷，含訪客防呆且不影響主流程)
     const updatedOrder: Order = {
       ...existingOrder,
       ...updateFields,
@@ -246,9 +246,11 @@ export async function POST(req: NextRequest) {
       shippingStatus: updateFields.shippingStatus || existingOrder.shippingStatus,
     } as unknown as Order;
 
-    sendShippingStatusEmail(updatedOrder, rtnMsg).catch((err) => {
+    try {
+      await sendShippingStatusEmail(updatedOrder, rtnMsg);
+    } catch (err) {
       console.error("[ECPay Logistics Webhook] 自動寄信失敗但流程不中斷:", err);
-    });
+    }
 
     // 8. 回應綠界 1|OK
     return new Response("1|OK", {

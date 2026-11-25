@@ -280,23 +280,26 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    // 4. 出貨貨態變更自動寄信通知 (含訪客防呆，不中斷管理員流程)
-    if (shippingStatus !== undefined || status !== undefined || trace !== undefined) {
+    // 4. 出貨貨態變更自動寄信通知 (使用 await 避免 Vercel Serverless 提早中斷，含訪客防呆且不影響管理員主流程)
+    let emailResult = null;
+    if (shippingStatus === "SHIPPED" || status !== undefined || trace !== undefined) {
       try {
         const orderForEmail = await db.collection("orders").findOne({ orderNumber });
         if (orderForEmail) {
-          sendShippingStatusEmail(orderForEmail as any, status || updateFields.status).catch((emailErr) => {
-            console.error("[PATCH orders] 發送貨態更新信件失敗 (不中斷管理員流程):", emailErr);
-          });
+          emailResult = await sendShippingStatusEmail(
+            orderForEmail as unknown as Order,
+            status !== undefined ? updateFields.status : undefined
+          );
         }
-      } catch (findErr) {
-        console.warn("[PATCH orders] 查詢訂單以發送貨態信件失敗:", findErr);
+      } catch (emailErr) {
+        console.error("[PATCH orders] 發送貨態更新信件失敗 (不中斷管理員流程):", emailErr);
       }
     }
 
     return NextResponse.json({
       success: true,
       message: "訂單資料更新成功",
+      emailResult,
     });
   } catch (error: any) {
     console.error("PATCH orders error:", error);

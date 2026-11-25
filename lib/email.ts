@@ -1,4 +1,5 @@
-import { Order } from "@/types/order";
+import nodemailer from "nodemailer";
+import type { Order } from "@/types/order";
 
 export interface SendEmailResult {
   success: boolean;
@@ -7,6 +8,9 @@ export interface SendEmailResult {
   error?: string;
   data?: unknown;
 }
+
+const DEFAULT_GMAIL_USER = "giaoyu.studio@gmail.com";
+const EMAIL_FROM = "巧鈺好飾 JADE Meet Metal <giaoyu.studio@gmail.com>";
 
 /**
  * 訪客結帳防呆驗證：檢查訂單收件者是否具備有效 Email
@@ -27,9 +31,9 @@ function formatCurrency(amount: number = 0): string {
 }
 
 /**
- * 呼叫 Resend REST API 發送信件
+ * 透過 Nodemailer + Gmail SMTP 發送信件
  */
-async function sendViaResend({
+async function sendViaGmailSmtp({
   to,
   subject,
   html,
@@ -38,33 +42,27 @@ async function sendViaResend({
   subject: string;
   html: string;
 }): Promise<unknown> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error("NO_API_KEY");
+  const gmailUser = process.env.GMAIL_USER?.trim() || DEFAULT_GMAIL_USER;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD?.trim();
+
+  if (!gmailPass) {
+    throw new Error("NO_GMAIL_APP_PASSWORD");
   }
 
-  const fromEmail = process.env.EMAIL_FROM?.trim() || "巧鈺好飾 JADE AURA <onboarding@resend.dev>";
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: gmailUser,
+      pass: gmailPass,
     },
-    body: JSON.stringify({
-      from: fromEmail,
-      to: [to],
-      subject: subject,
-      html: html,
-    }),
   });
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Resend API HTTP ${response.status}: ${errorBody}`);
-  }
-
-  return await response.json();
+  return await transporter.sendMail({
+    from: EMAIL_FROM,
+    to,
+    subject,
+    html,
+  });
 }
 
 /**
@@ -83,12 +81,12 @@ export async function sendOrderConfirmationEmail(order: Order): Promise<SendEmai
       return { success: true, skipped: true, reason: "NO_EMAIL" };
     }
 
-    const apiKey = process.env.RESEND_API_KEY?.trim();
-    if (!apiKey) {
+    const gmailPass = process.env.GMAIL_APP_PASSWORD?.trim();
+    if (!gmailPass) {
       console.warn(
-        `[Email Safe Skip] 系統尚未設定 RESEND_API_KEY，略過真實發信通知 (訂單: ${order.orderNumber}, 收件者: ${recipientEmail})。`
+        `[Email Safe Skip] 系統尚未設定 GMAIL_APP_PASSWORD，略過真實發信通知 (訂單: ${order.orderNumber}, 收件者: ${recipientEmail})。`
       );
-      return { success: true, skipped: true, reason: "NO_API_KEY" };
+      return { success: true, skipped: true, reason: "NO_GMAIL_APP_PASSWORD" };
     }
 
     const frontendUrl =
@@ -247,7 +245,7 @@ export async function sendOrderConfirmationEmail(order: Order): Promise<SendEmai
 </html>
     `;
 
-    const res = await sendViaResend({
+    const res = await sendViaGmailSmtp({
       to: recipientEmail,
       subject: subject,
       html: html,
@@ -282,12 +280,12 @@ export async function sendShippingStatusEmail(
       return { success: true, skipped: true, reason: "NO_EMAIL" };
     }
 
-    const apiKey = process.env.RESEND_API_KEY?.trim();
-    if (!apiKey) {
+    const gmailPass = process.env.GMAIL_APP_PASSWORD?.trim();
+    if (!gmailPass) {
       console.warn(
-        `[Email Safe Skip] 系統尚未設定 RESEND_API_KEY，略過貨態變更發信 (訂單: ${order.orderNumber}, 收件者: ${recipientEmail})。`
+        `[Email Safe Skip] 系統尚未設定 GMAIL_APP_PASSWORD，略過貨態變更發信 (訂單: ${order.orderNumber}, 收件者: ${recipientEmail})。`
       );
-      return { success: true, skipped: true, reason: "NO_API_KEY" };
+      return { success: true, skipped: true, reason: "NO_GMAIL_APP_PASSWORD" };
     }
 
     const frontendUrl =
@@ -415,7 +413,7 @@ export async function sendShippingStatusEmail(
 </html>
     `;
 
-    const res = await sendViaResend({
+    const res = await sendViaGmailSmtp({
       to: recipientEmail,
       subject: subject,
       html: html,

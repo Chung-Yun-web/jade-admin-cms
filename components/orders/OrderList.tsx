@@ -13,7 +13,8 @@ import {
   Send,
   Check,
   Save,
-  Loader2
+  Loader2,
+  Mail
 } from "lucide-react";
 import { Order } from "@/types/order";
 
@@ -28,6 +29,7 @@ interface OrderListProps {
   onToggleStatus: (order: Order) => Promise<void>;
   onUpdateTrace: (orderNumber: string, trace: string) => Promise<boolean>;
   onUpdateStatus?: (orderNumber: string, status: string) => Promise<boolean>;
+  onResendEmail?: (order: Order) => Promise<boolean>;
   isLoading: boolean;
 }
 
@@ -42,6 +44,7 @@ export const OrderList: React.FC<OrderListProps> = ({
   onToggleStatus,
   onUpdateTrace,
   onUpdateStatus,
+  onResendEmail,
   isLoading,
 }) => {
   const [traceInputs, setTraceInputs] = useState<Record<string, string>>({});
@@ -52,6 +55,9 @@ export const OrderList: React.FC<OrderListProps> = ({
   const [savingStatus, setSavingStatus] = useState<Record<string, boolean>>({});
   const [savedStatusFeedback, setSavedStatusFeedback] = useState<Record<string, boolean>>({});
 
+  const [resendingEmail, setResendingEmail] = useState<Record<string, boolean>>({});
+  const [resentEmailFeedback, setResentEmailFeedback] = useState<Record<string, boolean>>({});
+
   const handleTraceChange = (orderNumber: string, value: string) => {
     setTraceInputs((prev) => ({
       ...prev,
@@ -59,8 +65,8 @@ export const OrderList: React.FC<OrderListProps> = ({
     }));
   };
 
-  const handleSaveTrace = async (orderNumber: string) => {
-    const value = traceInputs[orderNumber] !== undefined ? traceInputs[orderNumber] : "";
+  const handleSaveTrace = async (orderNumber: string, fallbackTrace: string = "") => {
+    const value = traceInputs[orderNumber] !== undefined ? traceInputs[orderNumber] : fallbackTrace;
     setSavingTrace((prev) => ({ ...prev, [orderNumber]: true }));
     try {
       const ok = await onUpdateTrace(orderNumber, value);
@@ -82,9 +88,9 @@ export const OrderList: React.FC<OrderListProps> = ({
     }));
   };
 
-  const handleSaveStatus = async (orderNumber: string) => {
+  const handleSaveStatus = async (orderNumber: string, fallbackStatus: string = "") => {
     if (!onUpdateStatus) return;
-    const value = statusInputs[orderNumber] !== undefined ? statusInputs[orderNumber] : "";
+    const value = statusInputs[orderNumber] !== undefined ? statusInputs[orderNumber] : fallbackStatus;
     setSavingStatus((prev) => ({ ...prev, [orderNumber]: true }));
     try {
       const ok = await onUpdateStatus(orderNumber, value);
@@ -96,6 +102,22 @@ export const OrderList: React.FC<OrderListProps> = ({
       }
     } finally {
       setSavingStatus((prev) => ({ ...prev, [orderNumber]: false }));
+    }
+  };
+
+  const handleResendEmail = async (order: Order) => {
+    if (!onResendEmail) return;
+    setResendingEmail((prev) => ({ ...prev, [order.orderNumber]: true }));
+    try {
+      const ok = await onResendEmail(order);
+      if (ok) {
+        setResentEmailFeedback((prev) => ({ ...prev, [order.orderNumber]: true }));
+        setTimeout(() => {
+          setResentEmailFeedback((prev) => ({ ...prev, [order.orderNumber]: false }));
+        }, 2500);
+      }
+    } finally {
+      setResendingEmail((prev) => ({ ...prev, [order.orderNumber]: false }));
     }
   };
 
@@ -388,20 +410,20 @@ export const OrderList: React.FC<OrderListProps> = ({
                               value={currentTrace}
                               onChange={(e) => handleTraceChange(order.orderNumber, e.target.value)}
                               onKeyDown={(e) => {
-                                if (e.key === "Enter") handleSaveTrace(order.orderNumber);
+                                if (e.key === "Enter") handleSaveTrace(order.orderNumber, order.trace || "");
                               }}
                               className="bg-white border border-gray-300 rounded px-2.5 py-1 text-xs text-gray-900 font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-36 sm:w-40"
                             />
                             <button
                               type="button"
-                              onClick={() => handleSaveTrace(order.orderNumber)}
+                              onClick={() => handleSaveTrace(order.orderNumber, order.trace || "")}
                               disabled={isSaving}
                               className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all shadow-xs ${
                                 isSaved
                                   ? "bg-emerald-600 text-white"
                                   : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
                               }`}
-                              title="儲存物流單號至 MongoDB"
+                              title="儲存物流單號至 MongoDB 並發送貨態通知信"
                             >
                               {isSaving ? (
                                 <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />
@@ -423,20 +445,20 @@ export const OrderList: React.FC<OrderListProps> = ({
                                 value={statusInputs[order.orderNumber] !== undefined ? statusInputs[order.orderNumber] : (order.status || "")}
                                 onChange={(e) => handleStatusChange(order.orderNumber, e.target.value)}
                                 onKeyDown={(e) => {
-                                  if (e.key === "Enter") handleSaveStatus(order.orderNumber);
+                                  if (e.key === "Enter") handleSaveStatus(order.orderNumber, order.status || "");
                                 }}
                                 className="bg-amber-50/40 border border-amber-300 rounded px-2 py-0.5 text-xs text-amber-900 placeholder:text-amber-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 w-36 sm:w-40"
                               />
                               <button
                                 type="button"
-                                onClick={() => handleSaveStatus(order.orderNumber)}
+                                onClick={() => handleSaveStatus(order.orderNumber, order.status || "")}
                                 disabled={savingStatus[order.orderNumber]}
                                 className={`px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 transition-all shadow-xs ${
                                   savedStatusFeedback[order.orderNumber]
                                     ? "bg-emerald-600 text-white"
                                     : "bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300"
                                 }`}
-                                title="儲存保值郵寄貨態文字"
+                                title="儲存保值郵寄貨態文字並發送貨態通知信"
                               >
                                 {savingStatus[order.orderNumber] ? (
                                   <Loader2 className="w-3 h-3 animate-spin text-amber-700" />
@@ -480,6 +502,36 @@ export const OrderList: React.FC<OrderListProps> = ({
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
+
+                        {/* 重寄貨態通知信按鈕 */}
+                        {onResendEmail && (
+                          <button
+                            type="button"
+                            onClick={() => handleResendEmail(order)}
+                            disabled={resendingEmail[order.orderNumber]}
+                            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold border transition-colors shadow-xs disabled:opacity-50 ${
+                              resentEmailFeedback[order.orderNumber]
+                                ? "bg-emerald-600 text-white border-emerald-600"
+                                : order.customerInfo?.email?.trim()
+                                ? "bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-200"
+                                : "bg-gray-50 hover:bg-gray-100 text-gray-400 border-gray-200"
+                            }`}
+                            title={
+                              order.customerInfo?.email?.trim()
+                                ? `重寄貨態通知信至 ${order.customerInfo.email}`
+                                : "重寄貨態通知信（此訂單無顧客 Email，將安全略過）"
+                            }
+                          >
+                            {resendingEmail[order.orderNumber] ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : resentEmailFeedback[order.orderNumber] ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <Mail className="w-3.5 h-3.5" />
+                            )}
+                            <span>{resentEmailFeedback[order.orderNumber] ? "已重寄" : "重寄貨態信"}</span>
+                          </button>
+                        )}
 
                         {/* 狀態手動切換按鈕 */}
                         <button

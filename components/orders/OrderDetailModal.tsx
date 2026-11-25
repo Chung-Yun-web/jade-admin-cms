@@ -12,7 +12,8 @@ import {
   Save,
   Check,
   Loader2,
-  Calendar
+  Calendar,
+  Mail
 } from "lucide-react";
 import { Order } from "@/types/order";
 
@@ -23,6 +24,7 @@ interface OrderDetailModalProps {
   onToggleStatus: (order: Order) => Promise<void>;
   onUpdateTrace: (orderNumber: string, trace: string) => Promise<boolean>;
   onUpdateStatus?: (orderNumber: string, status: string) => Promise<boolean>;
+  onResendEmail?: (order: Order) => Promise<boolean>;
 }
 
 export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
@@ -32,6 +34,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   onToggleStatus,
   onUpdateTrace,
   onUpdateStatus,
+  onResendEmail,
 }) => {
   const [traceValue, setTraceValue] = useState<string>("");
   const [isSavingTrace, setIsSavingTrace] = useState<boolean>(false);
@@ -42,14 +45,32 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const [isSavingStatus, setIsSavingStatus] = useState<boolean>(false);
   const [isStatusSaved, setIsStatusSaved] = useState<boolean>(false);
 
+  const [isResendingEmail, setIsResendingEmail] = useState<boolean>(false);
+  const [isEmailResent, setIsEmailResent] = useState<boolean>(false);
+
   useEffect(() => {
     if (order) {
       setTraceValue(order.trace || "");
       setIsSaved(false);
       setStatusValue(order.status || "");
       setIsStatusSaved(false);
+      setIsEmailResent(false);
     }
   }, [order]);
+
+  const handleResendEmail = async () => {
+    if (!onResendEmail || !order) return;
+    setIsResendingEmail(true);
+    try {
+      const ok = await onResendEmail(order);
+      if (ok) {
+        setIsEmailResent(true);
+        setTimeout(() => setIsEmailResent(false), 2500);
+      }
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
 
   const handleSaveStatus = async () => {
     if (!onUpdateStatus || !order) return;
@@ -464,8 +485,34 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             <span>{isShipped ? "復原為待出貨" : "標記為已出貨 (並連動售出庫存)"}</span>
           </button>
 
-          {/* 右側：列印與關閉按鍵 */}
+          {/* 右側：重寄通知信、列印與關閉按鍵 */}
           <div className="flex items-center gap-2">
+            {onResendEmail && (
+              <button
+                type="button"
+                onClick={handleResendEmail}
+                disabled={isResendingEmail}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold border shadow-xs transition-colors disabled:opacity-50 ${
+                  isEmailResent
+                    ? "bg-emerald-600 text-white border-emerald-600"
+                    : "bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-200"
+                }`}
+                title={
+                  order.customerInfo?.email?.trim()
+                    ? `重寄貨態通知信至 ${order.customerInfo.email}`
+                    : "重寄貨態通知信（此訂單無顧客 Email，將安全略過）"
+                }
+              >
+                {isResendingEmail ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : isEmailResent ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <Mail className="w-3.5 h-3.5" />
+                )}
+                <span>{isEmailResent ? "已重寄通知信" : "重寄貨態通知信"}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onPrint(order, isCvs ? "CVS_STORE" : "INSURED_HOME")}

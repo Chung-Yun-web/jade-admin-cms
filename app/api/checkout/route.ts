@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 import { sendOrderConfirmationEmail } from "@/lib/email";
+import { Order } from "@/types/order";
 
 // 產生隨機英數字
 function generateRandomAlphanumeric(length: number): string {
@@ -204,8 +205,10 @@ export async function POST(req: NextRequest) {
       grandTotal: grandTotal,
     };
 
+    const paymentProvider = String(paymentInfo?.provider || "ECPAY").toUpperCase();
+    const paymentMethod = String(paymentInfo?.method || "").toUpperCase();
     const finalPaymentInfo = {
-      provider: "ECPAY",
+      provider: paymentProvider,
       status: "UNPAID",
       tradeNo: "",
     };
@@ -306,10 +309,20 @@ export async function POST(req: NextRequest) {
 
     await db.collection("orders").insertOne(orderDoc);
 
-    // 非同步安全寄送訂單成立通知信 (含訪客防呆，不中斷下單流程)
-    sendOrderConfirmationEmail(orderDoc as any).catch((emailErr) => {
-      console.error("[Checkout] 寄送訂單成立通知信時發生錯誤 (不中斷流程):", emailErr);
-    });
+    // 僅於無需線上即時付款（例如貨到付款 COD）時，於建立訂單後同步等待寄送訂單成立確認信；
+    // 綠界線上付款訂單改由 /api/payment/callback 付款成功 (RtnCode === '1') 時寄出，避免重複寄信。
+    const requiresOnlinePayment =
+      paymentProvider === "ECPAY" &&
+      paymentMethod !== "COD" &&
+      paymentMethod !== "CASH_ON_DELIVERY";
+
+    if (!requiresOnlinePayment) {
+      try {
+        await sendOrderConfirmationEmail(orderDoc as unknown as Order);
+      } catch (emailErr) {
+        console.error("[Checkout] 寄送訂單成立通知信時發生錯誤 (不中斷流程):", emailErr);
+      }
+    }
 
     // 6. 封裝綠界必要的 POST 參數 (全部必須是字串格式以利後續排序與簽章)
     const params: Record<string, string> = {
