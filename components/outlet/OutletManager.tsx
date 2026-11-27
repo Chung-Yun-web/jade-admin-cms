@@ -44,6 +44,7 @@ interface SortableOutletRowProps {
   onDelete: (item: OutletItem) => void;
   onQuickStatusChange: (item: OutletItem, newStatus: OutletStatus) => void;
   isSorting: boolean;
+  isUpdatingStatus: boolean;
 }
 
 const SortableOutletRow: React.FC<SortableOutletRowProps> = ({
@@ -53,6 +54,7 @@ const SortableOutletRow: React.FC<SortableOutletRowProps> = ({
   onDelete,
   onQuickStatusChange,
   isSorting,
+  isUpdatingStatus,
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item._id || item.slug });
@@ -209,10 +211,10 @@ const SortableOutletRow: React.FC<SortableOutletRowProps> = ({
       <td className="px-4 py-4 whitespace-nowrap">
         <div className="space-y-1">
           {renderStatusBadge(item.status)}
-          {item.status === "reserved" && item.reservedUntil && (
-            <p className="text-[10px] text-amber-700 flex items-center gap-0.5" title={new Date(item.reservedUntil).toLocaleString()}>
+          {item.status === "reserved" && !item.isSocialPromo && item.reservedUntil && (
+            <p className="text-[10px] text-amber-700 flex items-center gap-0.5" title={new Date(item.reservedUntil).toLocaleString("zh-TW", { hour12: false })}>
               <Clock className="w-3 h-3" />
-              <span>保留至: {new Date(item.reservedUntil).toLocaleDateString()}</span>
+              <span>暫時鎖定至: {new Date(item.reservedUntil).toLocaleString("zh-TW", { hour12: false })}</span>
             </p>
           )}
         </div>
@@ -222,8 +224,9 @@ const SortableOutletRow: React.FC<SortableOutletRowProps> = ({
       <td className="px-4 py-4 whitespace-nowrap text-xs">
         <select
           value={item.status}
+          disabled={isUpdatingStatus}
           onChange={(e) => onQuickStatusChange(item, e.target.value as OutletStatus)}
-          className="px-2 py-1 border border-gray-200 rounded text-xs text-gray-700 bg-white hover:border-gray-300 focus:ring-1 focus:ring-emerald-500"
+          className="px-2 py-1 border border-gray-200 rounded text-xs text-gray-700 bg-white hover:border-gray-300 focus:ring-1 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-wait"
         >
           <option value="available">現貨可售</option>
           <option value="reserved">預訂保留</option>
@@ -276,6 +279,9 @@ export const OutletManager: React.FC = () => {
 
   // Seed State
   const [isSeeding, setIsSeeding] = useState(false);
+
+  // Quick Status Update State
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -415,32 +421,35 @@ export const OutletManager: React.FC = () => {
     }
   };
 
-  // Quick Status Change
+  // Quick Status Change (使用局部 PATCH 更新，嚴格保護圖片與其他商品資料，並同步保留狀態與驗證碼)
   const handleQuickStatusChange = async (item: OutletItem, newStatus: OutletStatus) => {
+    if (!item._id || newStatus === item.status) return;
+    setUpdatingStatusId(item._id);
     try {
       const res = await fetch("/api/admin/outlets", {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           _id: item._id,
           status: newStatus,
-          title: item.title,
-          slug: item.slug,
-          price: item.price,
         }),
       });
 
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.outlet) {
         setOutlets((prev) =>
-          prev.map((o) => (o._id === item._id ? { ...o, status: newStatus } : o))
+          prev.map((o) => (o._id === item._id ? data.outlet : o))
         );
+      } else if (data.success) {
+        await fetchOutlets();
       } else {
         alert("更新狀態失敗: " + (data.message || ""));
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "未知錯誤";
       alert("更新狀態時發生錯誤：" + message);
+    } finally {
+      setUpdatingStatusId(null);
     }
   };
 
@@ -746,6 +755,7 @@ export const OutletManager: React.FC = () => {
                         item={item}
                         index={index}
                         isSorting={isSortingMode}
+                        isUpdatingStatus={updatingStatusId === item._id}
                         onEdit={(target) => {
                           setEditingOutlet(target);
                           setIsModalOpen(true);

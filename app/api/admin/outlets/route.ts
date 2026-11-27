@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 import { auth, isUserAdmin } from "@/auth";
-import { generatePromoCode } from "@/lib/utils";
+import {
+  isHexObjectId,
+  normalizeOutletStatusInput,
+  resolveOutletStatusFields,
+} from "@/lib/outletStatus";
 
 
 export async function GET() {
@@ -70,24 +74,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const validStatuses = ["available", "reserved", "sold", "archived"];
-    const isSocialPromo = Boolean(insertData.isSocialPromo);
-    let promoCode = (insertData.promoCode || "").trim();
-    let status = validStatuses.includes(insertData.status) ? insertData.status : "available";
-    let reservedUntil: Date | null = null;
-
-    if (isSocialPromo) {
-      status = "reserved";
-      reservedUntil = null; // 社團特惠長效保留，不受 20 分鐘過期影響
-      if (!promoCode) {
-        promoCode = generatePromoCode();
-      }
-    } else {
-      promoCode = "";
-      if (status === "reserved" && insertData.reservedUntil) {
-        reservedUntil = new Date(insertData.reservedUntil);
-      }
-    }
+    const resolvedStatus = resolveOutletStatusFields({
+      status: insertData.status,
+      isSocialPromo: insertData.isSocialPromo,
+      promoCode: insertData.promoCode,
+      existing: null,
+    });
 
     const originalPrice =
       insertData.originalPrice !== undefined && insertData.originalPrice !== "" && insertData.originalPrice !== null
@@ -98,16 +90,18 @@ export async function POST(req: NextRequest) {
       title,
       slug,
       price,
-      ...(originalPrice !== undefined ? { originalPrice } : {}),
-      images: Array.isArray(insertData.images) ? insertData.images.filter(Boolean) : [],
+      ...(originalPrice !== undefined && !isNaN(originalPrice) ? { originalPrice } : {}),
+      images: Array.isArray(insertData.images)
+        ? insertData.images.filter((img: unknown) => typeof img === "string" && img.trim().length > 0)
+        : [],
       material: (insertData.material || "").trim(),
       dimensions: (insertData.dimensions || "").trim(),
       sourceNote: (insertData.sourceNote || "").trim(),
       description: (insertData.description || "").trim(),
-      status,
-      reservedUntil,
-      isSocialPromo,
-      promoCode,
+      status: resolvedStatus.status,
+      reservedUntil: resolvedStatus.reservedUntil,
+      isSocialPromo: resolvedStatus.isSocialPromo,
+      promoCode: resolvedStatus.promoCode,
       sortOrder: Number(insertData.sortOrder) || 0,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -138,14 +132,23 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const { _id, ...updateData } = body;
 
-    if (!_id) {
-      return NextResponse.json({ success: false, message: "缺少 _id" }, { status: 400 });
+    if (!_id || !isHexObjectId(String(_id))) {
+      return NextResponse.json({ success: false, message: "缺少或無效的 _id" }, { status: 400 });
     }
 
-    const targetObjectId = new ObjectId(_id);
-    const title = (updateData.title || "").trim();
-    let slug = (updateData.slug || "").trim().toLowerCase();
-    const price = Number(updateData.price);
+    const targetObjectId = new ObjectId(String(_id));
+    const client = await clientPromise;
+    const db = client.db();
+
+    const existingOutlet = await db.collection("outlets").findOne({ _id: targetObjectId });
+    if (!existingOutlet) {
+      return NextResponse.json({ success: false, message: "找不到該筆 Outlet 商品" }, { status: 404 });
+    }
+
+    const title = (updateData.title ?? existingOutlet.title ?? "").trim();
+    let slug = (updateData.slug ?? existingOutlet.slug ?? "").trim().toLowerCase();
+    const price =
+      updateData.price !== undefined ? Number(updateData.price) : Number(existingOutlet.price);
 
     if (!title) {
       return NextResponse.json({ success: false, message: "請填寫商品名稱 (title)" }, { status: 400 });
@@ -160,15 +163,12 @@ export async function PUT(req: NextRequest) {
       slug = slug.replace(/\s+/g, "-").replace(/[^a-z0-9-_]/g, "");
     }
 
-    const client = await clientPromise;
-    const db = client.db();
-
     // Check slug uniqueness across other documents
-    const existing = await db.collection("outlets").findOne({
+    const existingSlugDoc = await db.collection("outlets").findOne({
       slug,
       _id: { $ne: targetObjectId },
     });
-    if (existing) {
+    if (existingSlugDoc) {
       return NextResponse.json(
         { success: false, message: `Slug 代碼「${slug}」已被其他商品使用，請更換` },
         { status: 400 }
@@ -178,68 +178,154 @@ export async function PUT(req: NextRequest) {
     delete updateData.createdAt;
     delete updateData.updatedAt;
 
-    const validStatuses = ["available", "reserved", "sold", "archived"];
-    const isSocialPromo = Boolean(updateData.isSocialPromo);
-    let promoCode = (updateData.promoCode || "").trim();
-    let status = validStatuses.includes(updateData.status) ? updateData.status : "available";
-    let reservedUntil: Date | null = null;
+    const resolvedStatus = resolveOutletStatusFields({
+      status: updateData.status,
+      isSocialPromo: updateData.isSocialPromo,
+      promoCode: updateData.promoCode,
+      existing: {
+        status: existingOutlet.status,
+        isSocialPromo: existingOutlet.isSocialPromo,
+        promoCode: existingOutlet.promoCode,
+      },
+    });
 
-    if (isSocialPromo) {
-      status = "reserved";
-      reservedUntil = null; // 社團特惠長效保留，不受 20 分鐘過期影響
-      if (!promoCode) {
-        promoCode = generatePromoCode();
-      }
-    } else {
-      if (status === "reserved" && updateData.isSocialPromo === false) {
-        status = "available";
-      }
-      promoCode = "";
-      if (status === "reserved" && updateData.reservedUntil) {
-        reservedUntil = new Date(updateData.reservedUntil);
-      }
-    }
-
-    const originalPrice =
-      updateData.originalPrice !== undefined && updateData.originalPrice !== "" && updateData.originalPrice !== null
-        ? Number(updateData.originalPrice)
-        : null;
+    const hasOwn = (key: string) => Object.prototype.hasOwnProperty.call(updateData, key);
 
     const setFields: Record<string, unknown> = {
       title,
       slug,
       price,
-      images: Array.isArray(updateData.images) ? updateData.images.filter(Boolean) : [],
-      material: (updateData.material || "").trim(),
-      dimensions: (updateData.dimensions || "").trim(),
-      sourceNote: (updateData.sourceNote || "").trim(),
-      description: (updateData.description || "").trim(),
-      status,
-      reservedUntil,
-      isSocialPromo,
-      promoCode,
-      sortOrder: Number(updateData.sortOrder) || 0,
+      status: resolvedStatus.status,
+      reservedUntil: resolvedStatus.reservedUntil,
+      isSocialPromo: resolvedStatus.isSocialPromo,
+      promoCode: resolvedStatus.promoCode,
       updatedAt: new Date(),
     };
 
-    if (originalPrice !== null && !isNaN(originalPrice)) {
-      setFields.originalPrice = originalPrice;
+    // 嚴格保護商品圖片欄位：僅在請求明確提供合法陣列時才更新 images，避免狀態更新誤清空圖片
+    if (hasOwn("images") && Array.isArray(updateData.images)) {
+      setFields.images = updateData.images.filter(
+        (img: unknown) => typeof img === "string" && img.trim().length > 0
+      );
+    }
+    if (hasOwn("material")) {
+      setFields.material = (updateData.material || "").trim();
+    }
+    if (hasOwn("dimensions")) {
+      setFields.dimensions = (updateData.dimensions || "").trim();
+    }
+    if (hasOwn("sourceNote")) {
+      setFields.sourceNote = (updateData.sourceNote || "").trim();
+    }
+    if (hasOwn("description")) {
+      setFields.description = (updateData.description || "").trim();
+    }
+    if (hasOwn("sortOrder")) {
+      setFields.sortOrder = Number(updateData.sortOrder) || 0;
     }
 
-    const updateOperation: Record<string, unknown> = { $set: setFields };
-    if (originalPrice === null || isNaN(originalPrice as number)) {
-      updateOperation.$unset = { originalPrice: "" };
+    const unsetFields: Record<string, string> = {
+      reservedAt: "",
+      lockedUntil: "",
+    };
+
+    if (hasOwn("originalPrice")) {
+      const originalPrice =
+        updateData.originalPrice !== undefined &&
+        updateData.originalPrice !== "" &&
+        updateData.originalPrice !== null
+          ? Number(updateData.originalPrice)
+          : null;
+
+      if (originalPrice !== null && !isNaN(originalPrice)) {
+        setFields.originalPrice = originalPrice;
+      } else {
+        unsetFields.originalPrice = "";
+      }
     }
+
+    const updateOperation: Record<string, unknown> = {
+      $set: setFields,
+      $unset: unsetFields,
+    };
 
     const result = await db.collection("outlets").updateOne(
       { _id: targetObjectId },
       updateOperation
     );
 
-    return NextResponse.json({ success: true, result });
+    const updatedOutlet = await db.collection("outlets").findOne({ _id: targetObjectId });
+
+    return NextResponse.json({ success: true, outlet: updatedOutlet, result });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "發生未知錯誤";
     console.error("PUT outlet error:", error);
+    return NextResponse.json({ success: false, message }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await auth();
+    if (!isUserAdmin(session)) {
+      return NextResponse.json({ success: false, message: "未授權" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const targetIdRaw = body._id || body.id;
+
+    if (!targetIdRaw || !isHexObjectId(String(targetIdRaw))) {
+      return NextResponse.json({ success: false, message: "缺少或無效的 _id" }, { status: 400 });
+    }
+
+    if (body.status !== undefined && !normalizeOutletStatusInput(body.status)) {
+      return NextResponse.json({ success: false, message: "無效的販售狀態 (status)" }, { status: 400 });
+    }
+
+    const targetObjectId = new ObjectId(String(targetIdRaw));
+    const client = await clientPromise;
+    const db = client.db();
+
+    const existingOutlet = await db.collection("outlets").findOne({ _id: targetObjectId });
+    if (!existingOutlet) {
+      return NextResponse.json({ success: false, message: "找不到該筆 Outlet 商品" }, { status: 404 });
+    }
+
+    const resolvedStatus = resolveOutletStatusFields({
+      status: body.status,
+      isSocialPromo: body.isSocialPromo,
+      promoCode: body.promoCode,
+      existing: {
+        status: existingOutlet.status,
+        isSocialPromo: existingOutlet.isSocialPromo,
+        promoCode: existingOutlet.promoCode,
+      },
+    });
+
+    // 狀態快速切換僅局部更新狀態與保留欄位，嚴格不碰觸 images / imageUrl 與其他商品資料
+    const result = await db.collection("outlets").updateOne(
+      { _id: targetObjectId },
+      {
+        $set: {
+          status: resolvedStatus.status,
+          isSocialPromo: resolvedStatus.isSocialPromo,
+          promoCode: resolvedStatus.promoCode,
+          reservedUntil: resolvedStatus.reservedUntil,
+          updatedAt: new Date(),
+        },
+        $unset: {
+          reservedAt: "",
+          lockedUntil: "",
+        },
+      }
+    );
+
+    const updatedOutlet = await db.collection("outlets").findOne({ _id: targetObjectId });
+
+    return NextResponse.json({ success: true, outlet: updatedOutlet, result });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "發生未知錯誤";
+    console.error("PATCH outlet error:", error);
     return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

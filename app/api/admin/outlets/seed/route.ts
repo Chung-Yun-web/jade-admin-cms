@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { auth, isUserAdmin } from "@/auth";
+import { resolveOutletStatusFields } from "@/lib/outletStatus";
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,7 +70,6 @@ export async function POST(req: NextRequest) {
     ];
 
     const now = new Date();
-    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const outletDocs = selected.map((prod, idx) => {
       // Collect all non-duplicate images from product
@@ -98,8 +98,10 @@ export async function POST(req: NextRequest) {
         .replace(/[^a-z0-9-_]/g, "");
       const slug = `outlet-${slugBase || idx + 1}`;
 
-      const status = statuses[idx] || "available";
-      const reservedUntil = status === "reserved" ? tomorrow : null;
+      const resolvedStatus = resolveOutletStatusFields({
+        status: statuses[idx] || "available",
+        existing: null,
+      });
 
       return {
         title: `${prod.name || "翡翠精品"} · 【特賣孤品】`,
@@ -112,8 +114,10 @@ export async function POST(req: NextRequest) {
         description:
           prod.description ||
           "保留玉石最初的隨形美學與原創肌理，將大自然的鬼斧神工融入日常配戴。此款為單品孤品，售完不補。",
-        status,
-        reservedUntil,
+        status: resolvedStatus.status,
+        reservedUntil: resolvedStatus.reservedUntil,
+        isSocialPromo: resolvedStatus.isSocialPromo,
+        promoCode: resolvedStatus.promoCode,
         sortOrder: idx,
         createdAt: now,
         updatedAt: now,

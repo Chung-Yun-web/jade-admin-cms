@@ -144,7 +144,12 @@ export async function PATCH(req: NextRequest) {
               isSocialPromo: false,
               status: "available",
               promoCode: "",
+              reservedUntil: null,
               updatedAt: new Date(),
+            },
+            $unset: {
+              reservedAt: "",
+              lockedUntil: "",
             },
           }
         );
@@ -155,8 +160,15 @@ export async function PATCH(req: NextRequest) {
           { _id: targetId },
           {
             $set: {
+              status: "reserved",
+              isSocialPromo: true,
               promoCode: newCode,
+              reservedUntil: null,
               updatedAt: new Date(),
+            },
+            $unset: {
+              reservedAt: "",
+              lockedUntil: "",
             },
           }
         );

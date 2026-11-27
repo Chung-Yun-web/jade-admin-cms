@@ -4,6 +4,11 @@ import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { Order } from "@/types/order";
+import {
+  findOutletForOrderItem,
+  lockAvailableOutletsForPendingCheckout,
+  markOutletsAsSoldForOrderItems,
+} from "@/lib/outletStatus";
 
 // 產生隨機英數字
 function generateRandomAlphanumeric(length: number): string {
@@ -172,6 +177,7 @@ export async function POST(req: NextRequest) {
       }
 
       let price = Number(item.price) || 0;
+      let dbOutlet = null;
       if (dbProduct) {
         price = dbProduct.basePrice || 0;
         if (spec && dbProduct.variants && Array.isArray(dbProduct.variants)) {
@@ -181,7 +187,12 @@ export async function POST(req: NextRequest) {
           }
         }
       } else {
-        console.warn(`[Checkout Security] 找不到商品編號：${cleanId}，採用前端傳入價格為備援：${price}`);
+        dbOutlet = await findOutletForOrderItem(db, item);
+        if (dbOutlet) {
+          price = Number(dbOutlet.price) || price;
+        } else {
+          console.warn(`[Checkout Security] 找不到商品編號：${cleanId}，採用前端傳入價格為備援：${price}`);
+        }
       }
 
       const quantity = Number(item.quantity) || 1;
@@ -189,7 +200,20 @@ export async function POST(req: NextRequest) {
 
       enrichedItems.push({
         productId: rawId,
-        name: dbProduct ? (spec ? `${dbProduct.name} - ${spec}` : dbProduct.name) : (item.name || "精品手工飾品"),
+        ...(dbOutlet
+          ? {
+              outletId: String(dbOutlet._id),
+              slug: dbOutlet.slug,
+              isOutlet: true,
+            }
+          : {}),
+        name: dbProduct
+          ? spec
+            ? `${dbProduct.name} - ${spec}`
+            : dbProduct.name
+          : dbOutlet
+          ? dbOutlet.title || item.name || "Outlet 精品單品"
+          : item.name || "精品手工飾品",
         price: price,
         quantity: quantity,
       });
@@ -317,10 +341,24 @@ export async function POST(req: NextRequest) {
       paymentMethod !== "CASH_ON_DELIVERY";
 
     if (!requiresOnlinePayment) {
+      // 無需線上付款（例如貨到付款）於訂單成立時直接將 Outlet 單品轉為已售出並清除保留/驗證碼/鎖定參數（不覆蓋圖片）
+      try {
+        await markOutletsAsSoldForOrderItems(db, enrichedItems);
+      } catch (outletErr) {
+        console.error("[Checkout] 更新 Outlet 已售出狀態失敗 (不中斷訂單流程):", outletErr);
+      }
+
       try {
         await sendOrderConfirmationEmail(orderDoc as unknown as Order);
       } catch (emailErr) {
         console.error("[Checkout] 寄送訂單成立通知信時發生錯誤 (不中斷流程):", emailErr);
+      }
+    } else {
+      // 線上付款訂單先針對「現貨可售」的 Outlet 單品加上 20 分鐘暫時鎖定（局部 $set，不覆蓋圖片或社團特惠保留）
+      try {
+        await lockAvailableOutletsForPendingCheckout(db, enrichedItems, 20);
+      } catch (outletLockErr) {
+        console.error("[Checkout] 鎖定 Outlet 20 分鐘保留失敗 (不中斷結帳流程):", outletLockErr);
       }
     }
 

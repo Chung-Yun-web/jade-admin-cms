@@ -33,24 +33,6 @@ interface OutletModalProps {
   onSave: (data: Partial<OutletItem>) => Promise<boolean>;
 }
 
-// Convert ISO/Date to YYYY-MM-DDTHH:mm for datetime-local input
-function toDatetimeLocalString(dateVal?: string | Date | null): string {
-  if (!dateVal) return "";
-  try {
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return "";
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const year = d.getFullYear();
-    const month = pad(d.getMonth() + 1);
-    const day = pad(d.getDate());
-    const hours = pad(d.getHours());
-    const minutes = pad(d.getMinutes());
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  } catch {
-    return "";
-  }
-}
-
 export const OutletModal: React.FC<OutletModalProps> = ({
   isOpen,
   onClose,
@@ -107,20 +89,40 @@ export const OutletModal: React.FC<OutletModalProps> = ({
 
   const handleToggleSocialPromo = (checked: boolean) => {
     if (checked) {
-      const code = formData.promoCode || generatePromoCode();
       setFormData((prev) => ({
         ...prev,
         isSocialPromo: true,
         status: "reserved",
         reservedUntil: null,
-        promoCode: code,
+        promoCode: prev.promoCode?.trim() || generatePromoCode(),
       }));
     } else {
       setFormData((prev) => ({
         ...prev,
         isSocialPromo: false,
-        status: "available",
+        status: prev.status === "reserved" ? "available" : prev.status,
+        reservedUntil: null,
         promoCode: "",
+      }));
+    }
+  };
+
+  const handleStatusChange = (newStatus: OutletStatus) => {
+    if (newStatus === "reserved") {
+      setFormData((prev) => ({
+        ...prev,
+        status: "reserved",
+        isSocialPromo: true,
+        promoCode: prev.promoCode?.trim() || generatePromoCode(),
+        reservedUntil: null,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        status: newStatus,
+        isSocialPromo: false,
+        promoCode: "",
+        reservedUntil: null,
       }));
     }
   };
@@ -355,18 +357,11 @@ export const OutletModal: React.FC<OutletModalProps> = ({
                 </label>
                 <select
                   value={formData.status || "available"}
-                  onChange={(e) => {
-                    const newStatus = e.target.value as OutletStatus;
-                    if (newStatus !== "reserved" && formData.isSocialPromo) {
-                      setFormData({ ...formData, status: newStatus, isSocialPromo: false, promoCode: "" });
-                    } else {
-                      setFormData({ ...formData, status: newStatus });
-                    }
-                  }}
+                  onChange={(e) => handleStatusChange(e.target.value as OutletStatus)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
                 >
                   <option value="available">🟢 現貨可售 (available)</option>
-                  <option value="reserved">🟡 預訂保留中 (reserved)</option>
+                  <option value="reserved">🟣 預訂保留 / 社團特惠保留 (reserved)</option>
                   <option value="sold">⚪ 已售出 (sold)</option>
                   <option value="archived">🔴 下架封存 (archived)</option>
                 </select>
@@ -381,7 +376,10 @@ export const OutletModal: React.FC<OutletModalProps> = ({
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <label className="text-sm font-bold text-purple-950 cursor-pointer">
+                        <label
+                          htmlFor="outlet-social-promo-toggle"
+                          className="text-sm font-bold text-purple-950 cursor-pointer"
+                        >
                           啟用社團特惠保留
                         </label>
                         {formData.isSocialPromo && (
@@ -391,12 +389,13 @@ export const OutletModal: React.FC<OutletModalProps> = ({
                         )}
                       </div>
                       <p className="text-xs text-purple-700/80 mt-0.5">
-                        開啟後自動將品項設為「預訂保留」，產生專屬驗證碼，且不受 20 分鐘計時自動過期影響。
+                        與「預訂保留 (reserved)」狀態雙向連動：開啟後自動產生專屬驗證碼並鎖定商品；切回現貨、已售出或封存時將自動關閉並清空驗證碼。
                       </p>
                     </div>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
+                      id="outlet-social-promo-toggle"
                       type="checkbox"
                       checked={Boolean(formData.isSocialPromo)}
                       onChange={(e) => handleToggleSocialPromo(e.target.checked)}
@@ -497,47 +496,36 @@ export const OutletModal: React.FC<OutletModalProps> = ({
                 )}
               </div>
 
-              {/* Reserved Until (visible when status === 'reserved' AND not social promo) */}
+              {/* Temporary checkout lock notice (only if legacy/checkout-locked item has status='reserved' without social promo) */}
               {formData.status === "reserved" && !formData.isSocialPromo && (
-                <div className="sm:col-span-2 bg-amber-50 border border-amber-200 rounded-lg p-3 animate-fade-in">
-                  <label className="block text-xs font-bold text-amber-800 mb-1 flex items-center gap-1.5">
+                <div className="sm:col-span-2 bg-amber-50 border border-amber-200 rounded-lg p-3 animate-fade-in space-y-2">
+                  <div className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-amber-600" />
-                    一般預訂保留截止時間 (選填)
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="datetime-local"
-                      value={toDatetimeLocalString(formData.reservedUntil)}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          reservedUntil: e.target.value ? new Date(e.target.value).toISOString() : null,
-                        })
-                      }
-                      className="px-3 py-1.5 border border-amber-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-amber-500"
-                    />
+                    <span>目前為暫時預訂鎖定狀態（尚未啟用專屬驗證碼）</span>
+                  </div>
+                  {formData.reservedUntil && (
+                    <p className="text-xs text-amber-700">
+                      暫時鎖定截止時間：{new Date(formData.reservedUntil).toLocaleString("zh-TW", { hour12: false })}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
                     <button
                       type="button"
-                      onClick={() => {
-                        const in24h = new Date(Date.now() + 24 * 60 * 60 * 1000);
-                        setFormData({ ...formData, reservedUntil: in24h.toISOString() });
-                      }}
-                      className="text-xs px-2.5 py-1 bg-amber-200/70 text-amber-900 rounded hover:bg-amber-300 transition-colors font-medium"
+                      onClick={() => handleToggleSocialPromo(true)}
+                      className="text-xs px-2.5 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors font-medium"
                     >
-                      + 保留 24 小時
+                      轉為社團特惠保留並產生驗證碼
                     </button>
-                    {formData.reservedUntil && (
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, reservedUntil: null })}
-                        className="text-xs text-gray-500 hover:text-red-600"
-                      >
-                        清除時間
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange("available")}
+                      className="text-xs px-2.5 py-1 bg-white border border-amber-300 text-amber-900 rounded hover:bg-amber-100 transition-colors font-medium"
+                    >
+                      解除保留改回現貨可售
+                    </button>
                   </div>
-                  <p className="text-[11px] text-amber-700 mt-1">
-                    * 保留截止後，可手動將狀態改回「現貨可售」或設定為「已售出」。
+                  <p className="text-[11px] text-amber-700">
+                    * 儲存為「預訂保留」時系統將自動啟用社團特惠保留並配發專屬驗證碼，消除保留欄位衝突。
                   </p>
                 </div>
               )}

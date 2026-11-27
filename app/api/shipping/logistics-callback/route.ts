@@ -4,6 +4,7 @@ import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 import { sendShippingStatusEmail } from "@/lib/email";
 import { Order } from "@/types/order";
+import { markOutletsAsSoldForOrderItems } from "@/lib/outletStatus";
 
 export const revalidate = 0;
 
@@ -220,7 +221,11 @@ export async function POST(req: NextRequest) {
               console.log(
                 `[MongoDB] Logistics linked shipment: Product ${productDoc.name} variant [${variantIndex}] marked as sold`
               );
+            } else if (!productDoc) {
+              await markOutletsAsSoldForOrderItems(db, [item]);
             }
+          } else {
+            await markOutletsAsSoldForOrderItems(db, [item]);
           }
         }
       } catch (stockErr) {

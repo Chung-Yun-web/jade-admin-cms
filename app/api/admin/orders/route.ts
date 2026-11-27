@@ -4,6 +4,7 @@ import clientPromise from "@/lib/mongodb";
 import { auth, isUserAdmin } from "@/auth";
 import { Order, OrderStatsData } from "@/types/order";
 import { sendShippingStatusEmail } from "@/lib/email";
+import { markOutletsAsSoldForOrderItems } from "@/lib/outletStatus";
 
 export const revalidate = 0;
 
@@ -271,7 +272,11 @@ export async function PATCH(req: NextRequest) {
                   }
                 );
                 console.log(`[MongoDB] Linked shipment: Product ${productDoc.name} variant [${variantIndex}] marked as sold`);
+              } else if (!productDoc) {
+                await markOutletsAsSoldForOrderItems(db, [item]);
               }
+            } else {
+              await markOutletsAsSoldForOrderItems(db, [item]);
             }
           }
         }

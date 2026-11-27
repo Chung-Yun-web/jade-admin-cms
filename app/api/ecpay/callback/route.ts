@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import clientPromise from '@/lib/mongodb';
+import { markOutletsAsSoldForOrderItems } from '@/lib/outletStatus';
 
 // 綠界特有的 URL 編碼規則
 function ecpayUrlEncode(str: string): string {
@@ -84,6 +85,16 @@ export async function POST(req: NextRequest) {
             }
           );
           console.log(`[Double Insurance] Successfully processed ECPay browser callback for order ${MerchantTradeNo}. DB update result:`, result);
+
+          // 雙重保險：付款成功時同步將訂單內 Outlet 單品轉為已售出並清除保留/驗證碼/鎖定參數（嚴格不覆蓋圖片）
+          try {
+            const paidOrder = await db.collection('orders').findOne({ orderNumber: MerchantTradeNo });
+            if (paidOrder && Array.isArray(paidOrder.items)) {
+              await markOutletsAsSoldForOrderItems(db, paidOrder.items);
+            }
+          } catch (outletErr) {
+            console.error(`[Double Insurance] 更新 Outlet 已售出狀態失敗 (訂單: ${MerchantTradeNo}):`, outletErr);
+          }
         } else {
           console.log(`[Double Insurance] ECPay browser callback received for order ${MerchantTradeNo} but payment failed. RtnCode: ${RtnCode}`);
         }
